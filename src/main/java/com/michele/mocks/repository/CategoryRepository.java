@@ -12,6 +12,5 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, JpaSp
     @EntityGraph(attributePaths = { "products" })
     Optional<Category> findWithProductsById(Long id);
 
-    @EntityGraph(attributePaths = { "children" })
-    Optional<Category> findWithChildrenById(Long id);
+    boolean existsByParentId(Long parentId);
 }
