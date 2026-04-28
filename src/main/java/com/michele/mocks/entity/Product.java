@@ -46,6 +46,9 @@ public class Product {
     private int minQuantity;
 
     private String imageUrl;
+    @ElementCollection
+    @CollectionTable(name = "product_image_urls", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "image_url")
     private List<String> imageUrls;
 
     @PositiveOrZero
@@ -57,10 +60,25 @@ public class Product {
     @Size(min = 3, max = 3)
     private String currency;
 
+    @Column(updatable = false)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
