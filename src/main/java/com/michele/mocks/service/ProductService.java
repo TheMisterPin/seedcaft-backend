@@ -3,7 +3,10 @@ package com.michele.mocks.service;
 import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
+import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
+import com.michele.mocks.exception.BadRequestException;
+import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -47,7 +50,7 @@ public class ProductService {
 
     public ProductResponse getProduct(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         return toProductResponse(product);
     }
@@ -67,8 +70,17 @@ public class ProductService {
         if (idStr == null || idStr.isBlank()) {
             return;
         }
-        long categoryPk = Long.parseLong(idStr.trim());
-        product.setCategory(categoryRepository.getReferenceById(categoryPk));
+        long categoryPk;
+        try {
+            categoryPk = Long.parseLong(idStr.trim());
+        } catch (NumberFormatException ex) {
+            throw new BadRequestException("Invalid categoryId: " + idStr);
+        }
+
+        Category category = categoryRepository.findById(categoryPk)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + categoryPk));
+
+        product.setCategory(category);
     }
 
     private static ProductResponse toProductResponse(Product product) {
@@ -87,7 +99,7 @@ public class ProductService {
 
     public ProductWithCategoryResponse getProductWithCategory(Long id) {
         Product product = productRepository.findWithCategoryById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         ProductCategoryResponse categoryDto = null;
 
