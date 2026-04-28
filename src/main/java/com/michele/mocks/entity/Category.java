@@ -1,6 +1,8 @@
 package com.michele.mocks.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,8 +16,13 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
+    @Size(max = 255)
     private String name;
+    @Size(max = 1024)
     private String description;
+    @NotBlank
+    @Size(max = 64)
     private String code;
     private String parentCode;
 

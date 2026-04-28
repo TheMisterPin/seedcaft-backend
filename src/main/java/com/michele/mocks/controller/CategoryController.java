@@ -2,6 +2,7 @@ package com.michele.mocks.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,12 +27,12 @@ public class CategoryController {
     }
 
     @PostMapping
-    public CategoryResponse create(@RequestBody Category category) {
+    public CategoryResponse create(@Valid @RequestBody Category category) {
         return service.create(category);
     }
 
     @PostMapping("/batch")
-    public List<CategoryResponse> createBatch(@RequestBody List<Category> categories) {
+    public List<CategoryResponse> createBatch(@RequestBody List<@Valid Category> categories) {
         return service.createAll(categories);
     }
 
