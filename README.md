@@ -41,7 +41,7 @@ Official base path for controllers is **`/api/v1`**.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/health` | Liveness check (`{"status":"ok"}`) |
+| GET | `/api/v1/health` | Liveness check (`{"status":"ok","service":"seedcraft-api","version":"v1"}`) |
 | GET/POST | `/api/v1/products` | List or create a product |
 | POST | `/api/v1/products/batch` | Create many products |
 | GET | `/api/v1/products/{id}` | Product by id |
@@ -51,6 +51,7 @@ Official base path for controllers is **`/api/v1`**.
 | GET | `/api/v1/categories/{id}` | Category by id |
 | GET | `/api/v1/categories/{id}/with-products` | Category with products |
 | GET | `/api/v1/categories/{id}/tree` | Category subtree |
+| GET | `/api/v1/categories/tree` | Full category tree (roots with nested children) |
 
 ## OpenAPI / Swagger UI
 

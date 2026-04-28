@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 public record CreateCategoryRequest(
         @NotBlank @Size(max = 64) String code,
         @NotBlank @Size(max = 255) String name,
-        String description,
-        String parentCode) {
+        @Size(max = 1024) String description,
+        Long parentId,
+        @Size(max = 64) String parentCode) {
 }

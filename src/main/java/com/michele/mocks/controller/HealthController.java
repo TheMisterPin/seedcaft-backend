@@ -7,10 +7,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping("/api/v1/health")
-    public HealthResponse health() {
-        return new HealthResponse("ok");
+    public HealthResponse healthV1() {
+        return new HealthResponse("ok", "seedcraft-api", "v1");
     }
 
-    public record HealthResponse(String status) {
+    @GetMapping("/api/health")
+    public HealthResponse healthLegacy() {
+        return healthV1();
+    }
+
+    public record HealthResponse(String status, String service, String version) {
     }
 }

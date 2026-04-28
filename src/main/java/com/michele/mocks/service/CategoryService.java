@@ -8,23 +8,19 @@ import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
 import com.michele.mocks.dto.categories.CreateCategoryRequest;
 import com.michele.mocks.dto.categories.UpdateCategoryRequest;
 import com.michele.mocks.entity.Category;
-import com.michele.mocks.entity.Product;
 import com.michele.mocks.exception.BadRequestException;
-import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.mapper.CategoryMapper;
 import com.michele.mocks.mapper.ProductMapper;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
+import com.michele.mocks.specification.CategorySpecifications;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
@@ -37,8 +33,13 @@ public class CategoryService {
         this.productRepository = productRepository;
     }
 
-    public PageResponse<CategoryResponse> getAll(Pageable pageable) {
-        return PageResponse.from(categoryRepository.findAll(pageable), CategoryMapper::toResponse);
+    public PageResponse<CategoryResponse> getAll(String q, Long parentId, String parentCode, Pageable pageable) {
+        Specification<Category> spec = Specification
+                .where(CategorySpecifications.textSearch(q))
+                .and(CategorySpecifications.hasParentId(parentId))
+                .and(CategorySpecifications.hasParentCode(parentCode));
+
+        return PageResponse.from(categoryRepository.findAll(spec, pageable), CategoryMapper::toResponse);
     }
 
     @Transactional
@@ -110,7 +111,15 @@ public class CategoryService {
         Category rootCategory = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
-        return CategoryMapper.toTreeResponse(category);
+        return CategoryMapper.toTreeResponse(rootCategory);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryTreeResponse> getFullTree() {
+        return categoryRepository.findAll().stream()
+                .filter(category -> category.getParent() == null)
+                .map(CategoryMapper::toTreeResponse)
+                .toList();
     }
 
     private Category toEntity(CreateCategoryRequest request) {
@@ -124,6 +133,7 @@ public class CategoryService {
         category.setName(request.name());
         category.setDescription(request.description());
         category.setParentCode(request.parentCode());
+        category.setParent(resolveParent(request.parentId(), request.parentCode()));
     }
 
     private void applyRequest(Category category, UpdateCategoryRequest request) {
@@ -131,5 +141,20 @@ public class CategoryService {
         category.setName(request.name());
         category.setDescription(request.description());
         category.setParentCode(request.parentCode());
+        category.setParent(resolveParent(request.parentId(), request.parentCode()));
+    }
+
+    private Category resolveParent(Long parentId, String parentCode) {
+        if (parentId != null) {
+            return categoryRepository.findById(parentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found: id=" + parentId));
+        }
+
+        if (parentCode != null && !parentCode.isBlank()) {
+            return categoryRepository.findByCodeIgnoreCase(parentCode.trim())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found: code=" + parentCode));
+        }
+
+        return null;
     }
 }
