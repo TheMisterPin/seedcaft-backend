@@ -13,4 +13,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, JpaSp
     Optional<Category> findWithProductsById(Long id);
 
     boolean existsByParentId(Long parentId);
+
+    Optional<Category> findByCodeIgnoreCase(String code);
 }

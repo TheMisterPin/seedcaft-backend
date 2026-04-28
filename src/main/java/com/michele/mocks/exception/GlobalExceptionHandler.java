@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,7 +19,7 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ErrorResponse handleValidationException(
+    public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
@@ -28,15 +29,11 @@ public class GlobalExceptionHandler {
                 .map(this::formatFieldError)
                 .toList();
 
-        return buildError(
-                HttpStatus.BAD_REQUEST,
-                "Validation failed",
-                request,
-                details);
+        return buildError(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ErrorResponse handleConstraintViolationException(
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
             ConstraintViolationException ex,
             HttpServletRequest request) {
 
@@ -45,15 +42,11 @@ public class GlobalExceptionHandler {
                 .map(this::formatConstraintViolation)
                 .toList();
 
-        return buildError(
-                HttpStatus.BAD_REQUEST,
-                "Validation failed",
-                request,
-                details);
+        return buildError(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ErrorResponse handleHttpMessageNotReadableException(
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException ex,
             HttpServletRequest request) {
 
@@ -61,11 +54,11 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "Malformed request body",
                 request,
-                List.of(ex.getMostSpecificCause().getMessage()));
+                List.of(ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ErrorResponse handleMethodArgumentTypeMismatchException(
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
 
@@ -73,44 +66,29 @@ public class GlobalExceptionHandler {
                 ? ex.getRequiredType().getSimpleName()
                 : "unknown";
 
-        String detail = String.format(
-                "Parameter '%s' must be of type %s",
-                ex.getName(),
-                requiredType);
+        String detail = String.format("Parameter '%s' must be of type %s", ex.getName(), requiredType);
 
-        return buildError(
-                HttpStatus.BAD_REQUEST,
-                "Invalid request parameter",
-                request,
-                List.of(detail));
+        return buildError(HttpStatus.BAD_REQUEST, "Invalid request parameter", request, List.of(detail));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ErrorResponse handleResourceNotFoundException(
+    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             ResourceNotFoundException ex,
             HttpServletRequest request) {
 
-        return buildError(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage(),
-                request,
-                List.of());
+        return buildError(HttpStatus.NOT_FOUND, ex.getMessage(), request, List.of());
     }
 
     @ExceptionHandler(BadRequestException.class)
-    public ErrorResponse handleBadRequestException(
+    public ResponseEntity<ErrorResponse> handleBadRequestException(
             BadRequestException ex,
             HttpServletRequest request) {
 
-        return buildError(
-                HttpStatus.BAD_REQUEST,
-                ex.getMessage(),
-                request,
-                List.of());
+        return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
     }
 
     @ExceptionHandler(Exception.class)
-    public ErrorResponse handleException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request) {
         return buildError(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred",
@@ -118,33 +96,29 @@ public class GlobalExceptionHandler {
                 List.of(ex.getClass().getSimpleName()));
     }
 
-    private ErrorResponse buildError(
+    private ResponseEntity<ErrorResponse> buildError(
             HttpStatus status,
             String message,
             HttpServletRequest request,
             List<String> details) {
 
-        return new ErrorResponse(
+        ErrorResponse response = new ErrorResponse(
                 Instant.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,
                 request.getRequestURI(),
                 details);
+
+        return ResponseEntity.status(status).body(response);
     }
 
     private String formatFieldError(FieldError fieldError) {
-        return String.format(
-                "%s: %s",
-                fieldError.getField(),
-                fieldError.getDefaultMessage());
+        return String.format("%s: %s", fieldError.getField(), fieldError.getDefaultMessage());
     }
 
     private String formatConstraintViolation(ConstraintViolation<?> violation) {
-        return String.format(
-                "%s: %s",
-                violation.getPropertyPath(),
-                violation.getMessage());
+        return String.format("%s: %s", violation.getPropertyPath(), violation.getMessage());
     }
 
     public record ErrorResponse(

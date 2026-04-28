@@ -1,5 +1,6 @@
 package com.michele.mocks.service;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.CreateProductRequest;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
@@ -10,7 +11,6 @@ import com.michele.mocks.mapper.ProductMapper;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
 import com.michele.mocks.specification.ProductSpecifications;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         applyRequest(product, request);
-        return toProductResponse(productRepository.save(product));
+        return ProductMapper.toResponse(productRepository.save(product));
     }
 
     @Transactional
@@ -65,7 +65,7 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    public Page<ProductResponse> getAll(
+    public PageResponse<ProductResponse> getAll(
             String q,
             Long categoryId,
             String categoryCode,
@@ -82,7 +82,7 @@ public class ProductService {
                 .and(ProductSpecifications.maxPrice(maxPrice))
                 .and(ProductSpecifications.hasCurrency(currency));
 
-        return productRepository.findAll(spec, pageable).map(ProductService::toProductResponse);
+        return PageResponse.from(productRepository.findAll(spec, pageable), ProductMapper::toResponse);
     }
 
     public ProductResponse getProduct(Long id) {
@@ -96,23 +96,7 @@ public class ProductService {
         Product product = productRepository.findWithCategoryById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
-        ProductCategoryResponse categoryDto = null;
-        if (product.getCategory() != null) {
-            var c = product.getCategory();
-            categoryDto = new ProductCategoryResponse(
-                    c.getId(),
-                    c.getName(),
-                    c.getDescription(),
-                    c.getCode(),
-                    c.getParentCode());
-        }
-
-        return new ProductWithCategoryResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                categoryDto);
+        return ProductMapper.toWithCategoryResponse(product);
     }
 
     private Product toEntity(CreateProductRequest request) {
@@ -134,6 +118,7 @@ public class ProductService {
         product.setHeightCm(request.heightCm() != null ? request.heightCm() : 0d);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
         product.setImageUrl(request.imageUrl());
+        product.setImageUrls(request.imageUrls());
         product.setSellPrice(request.sellPrice());
         product.setPurchPrice(request.purchasePrice());
         product.setCurrency(request.currency());
@@ -154,6 +139,7 @@ public class ProductService {
         product.setHeightCm(request.heightCm() != null ? request.heightCm() : 0d);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
         product.setImageUrl(request.imageUrl());
+        product.setImageUrls(request.imageUrls());
         product.setSellPrice(request.sellPrice());
         product.setPurchPrice(request.purchasePrice());
         product.setCurrency(request.currency());
@@ -172,12 +158,5 @@ public class ProductService {
         }
 
         product.setCategory(categoryRepository.getReferenceById(categoryId));
-    }
-
-    public ProductWithCategoryResponse getProductWithCategory(Long id) {
-        Product product = productRepository.findWithCategoryById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
-
-        return ProductMapper.toWithCategoryResponse(product);
     }
 }

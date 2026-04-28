@@ -16,6 +16,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
@@ -42,8 +43,9 @@ class CategoryControllerWebMvcTest {
 
     @Test
     void createCategoryValid() throws Exception {
-        CreateCategoryRequest request = new CreateCategoryRequest("ELEC", "Electronics", "all electronics", null);
-        CategoryResponse response = new CategoryResponse(1L, "ELEC", "Electronics", "all electronics");
+        CreateCategoryRequest request = new CreateCategoryRequest("ELEC", "Electronics", "all electronics", null, null);
+        CategoryResponse response = new CategoryResponse(
+                1L, "ELEC", "Electronics", "all electronics", null, null, LocalDateTime.now(), LocalDateTime.now());
 
         when(categoryService.create(any(CreateCategoryRequest.class))).thenReturn(response);
 
@@ -95,7 +97,7 @@ class CategoryControllerWebMvcTest {
     @Test
     void getCategoriesPaginatedList() throws Exception {
         PageResponse<CategoryResponse> response = new PageResponse<>(
-                List.of(new CategoryResponse(1L, "ELEC", "Electronics", "desc")),
+                List.of(new CategoryResponse(1L, "ELEC", "Electronics", "desc", null, null, null, null)),
                 0,
                 20,
                 1,
@@ -104,7 +106,7 @@ class CategoryControllerWebMvcTest {
                 false,
                 "name: ASC");
 
-        when(categoryService.getAll(any())).thenReturn(response);
+        when(categoryService.getAll(any(), any(), any(), any())).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/categories")
                         .param("page", "0")
