@@ -12,12 +12,19 @@ The project depends on a **Spring Boot snapshot** parent; Maven resolves it from
 
 ## Database
 
-Create a database and user that match your settings. Defaults in `application.properties` are:
+Create a database and user that match your settings. The app reads DB connection values from environment variables (`DB_*`, with fallback to `SPRING_DATASOURCE_*`) so credentials are not hardcoded.
 
-- Database: `mocks`
-- URL: `jdbc:postgresql://localhost:5432/mocks`
-- Username: `mocks_admin`
-- Password: `password`
+1. Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your credentials:
+
+- `DB_URL` (default: `jdbc:postgresql://localhost:5432/mocks`)
+- `DB_USERNAME` (default: `mocks_admin`)
+- `DB_PASSWORD` (default: `password`)
 
 Flyway runs on startup (`baseline-on-migrate` is enabled so existing databases can be baselined before numbered migrations).
 
@@ -43,7 +50,13 @@ Build the image from the project root:
 docker build -t seedcraft-backend .
 ```
 
-Run the container and publish the API on port 8080:
+Run the container and publish the API on port 8080 using your `.env` file:
+
+```bash
+docker run --rm -p 8080:8080 --env-file .env seedcraft-backend
+```
+
+Or pass standard Spring variables directly (useful on managed deploy platforms):
 
 ```bash
 docker run --rm -p 8080:8080 \
@@ -52,8 +65,6 @@ docker run --rm -p 8080:8080 \
   -e SPRING_DATASOURCE_PASSWORD=password \
   seedcraft-backend
 ```
-
-> If your database is running in another container or host, change the datasource environment variables accordingly.
 
 ## API
 
