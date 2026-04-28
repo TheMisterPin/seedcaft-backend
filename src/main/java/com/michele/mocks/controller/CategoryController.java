@@ -2,6 +2,7 @@ package com.michele.mocks.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Page;
@@ -34,18 +35,13 @@ public class CategoryController {
     }
 
     @PostMapping
-    public CategoryResponse create(@RequestBody CreateCategoryRequest request) {
-        return service.create(request);
+    public CategoryResponse create(@Valid @RequestBody Category category) {
+        return service.create(category);
     }
 
     @PostMapping("/batch")
-    public List<CategoryResponse> createBatch(@RequestBody List<CreateCategoryRequest> requests) {
-        return service.createAll(requests);
-    }
-
-    @PutMapping("/{id}")
-    public CategoryResponse update(@PathVariable Long id, @RequestBody UpdateCategoryRequest request) {
-        return service.update(id, request);
+    public List<CategoryResponse> createBatch(@RequestBody List<@Valid Category> categories) {
+        return service.createAll(categories);
     }
 
     @GetMapping

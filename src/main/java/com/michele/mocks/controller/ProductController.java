@@ -3,6 +3,7 @@ package com.michele.mocks.controller;
 import java.util.List;
 import java.math.BigDecimal;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Page;
