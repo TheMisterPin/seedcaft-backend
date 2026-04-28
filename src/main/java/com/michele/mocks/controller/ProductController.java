@@ -4,6 +4,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.michele.mocks.dto.products.UpdateProductRequest;
+import com.michele.mocks.dto.products.CreateProductRequest;
+import com.michele.mocks.dto.products.ProductResponse;
+import com.michele.mocks.dto.products.ProductWithCategoryResponse;
+import com.michele.mocks.dto.products.UpdateProductRequest;
+import com.michele.mocks.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +28,10 @@ import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.service.ProductService;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -40,7 +49,7 @@ public class ProductController {
     }
 
     @PostMapping("/batch")
-    public List<ProductResponse> createBatch(@Valid @RequestBody List<CreateProductRequest> requests) {
+    public List<ProductResponse> createBatch(@RequestBody List<@Valid CreateProductRequest> requests) {
         return service.createAll(requests);
     }
 

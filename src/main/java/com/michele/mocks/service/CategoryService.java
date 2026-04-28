@@ -11,6 +11,9 @@ import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
+import com.michele.mocks.exception.ResourceNotFoundException;
+import com.michele.mocks.mapper.CategoryMapper;
+import com.michele.mocks.mapper.ProductMapper;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
 import org.springframework.data.domain.Pageable;
@@ -35,14 +38,14 @@ public class CategoryService {
     }
 
     public PageResponse<CategoryResponse> getAll(Pageable pageable) {
-        return PageResponse.from(categoryRepository.findAll(pageable), this::mapCategory);
+        return PageResponse.from(categoryRepository.findAll(pageable), CategoryMapper::toResponse);
     }
 
     @Transactional
     public CategoryResponse create(CreateCategoryRequest request) {
         Category category = new Category();
         applyRequest(category, request);
-        return mapCategory(categoryRepository.save(category));
+        return CategoryMapper.toResponse(categoryRepository.save(category));
     }
 
     @Transactional
@@ -52,7 +55,7 @@ public class CategoryService {
                 .toList();
 
         return categoryRepository.saveAll(categories).stream()
-                .map(this::mapCategory)
+                .map(CategoryMapper::toResponse)
                 .toList();
     }
 
@@ -62,7 +65,7 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
         applyRequest(category, request);
-        return mapCategory(categoryRepository.save(category));
+        return CategoryMapper.toResponse(categoryRepository.save(category));
     }
 
     @Transactional
@@ -82,7 +85,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
-        return mapCategory(category);
+        return CategoryMapper.toResponse(category);
     }
 
     public CategoryWithProductsResponse getCategoryWithProducts(Long id) {
@@ -91,7 +94,7 @@ public class CategoryService {
 
         List<CategoryProductResponse> products = category.getProducts()
                 .stream()
-                .map(this::mapCategoryProduct)
+                .map(ProductMapper::toCategoryProductResponse)
                 .toList();
 
         return new CategoryWithProductsResponse(
@@ -107,40 +110,7 @@ public class CategoryService {
         Category rootCategory = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
-        String rootCode = rootCategory.getCode();
-        if (rootCode == null || rootCode.isBlank()) {
-            return new CategoryTreeResponse(
-                    rootCategory.getId(),
-                    rootCategory.getCode(),
-                    rootCategory.getName(),
-                    rootCategory.getDescription(),
-                    List.of());
-        }
-
-        Map<String, List<Category>> categoriesByParentCode = groupByParentCode(categoryRepository.findAll());
-        return mapTree(rootCategory, categoriesByParentCode);
-    }
-
-    @Transactional(readOnly = true)
-    public List<CategoryTreeResponse> getFullTree() {
-        List<Category> categories = categoryRepository.findAll();
-        if (categories.isEmpty()) {
-            return List.of();
-        }
-
-        Map<String, List<Category>> categoriesByParentCode = groupByParentCode(categories);
-        return categories.stream()
-                .filter(category -> category.getParentCode() == null || category.getParentCode().isBlank())
-                .map(root -> mapTree(root, categoriesByParentCode))
-                .toList();
-    }
-
-    private Map<String, List<Category>> groupByParentCode(List<Category> categories) {
-        return categories.stream()
-                .collect(Collectors.groupingBy(
-                        category -> normalize(category.getParentCode()),
-                        LinkedHashMap::new,
-                        Collectors.toCollection(ArrayList::new)));
+        return CategoryMapper.toTreeResponse(category);
     }
 
     private Category toEntity(CreateCategoryRequest request) {
@@ -161,43 +131,5 @@ public class CategoryService {
         category.setName(request.name());
         category.setDescription(request.description());
         category.setParentCode(request.parentCode());
-    }
-
-    private CategoryResponse mapCategory(Category category) {
-        return new CategoryResponse(
-                category.getId(),
-                category.getCode(),
-                category.getName(),
-                category.getDescription());
-    }
-
-    private CategoryProductResponse mapCategoryProduct(Product product) {
-        return new CategoryProductResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                product.getSellPrice() != null ? product.getSellPrice().doubleValue() : null,
-                product.getPurchPrice() != null ? product.getPurchPrice().doubleValue() : null,
-                product.getCurrency());
-    }
-
-    private CategoryTreeResponse mapTree(Category category, Map<String, List<Category>> categoriesByParentCode) {
-        List<CategoryTreeResponse> children = categoriesByParentCode
-                .getOrDefault(normalize(category.getCode()), List.of())
-                .stream()
-                .map(child -> mapTree(child, categoriesByParentCode))
-                .toList();
-
-        return new CategoryTreeResponse(
-                category.getId(),
-                category.getCode(),
-                category.getName(),
-                category.getDescription(),
-                children);
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
     }
 }
