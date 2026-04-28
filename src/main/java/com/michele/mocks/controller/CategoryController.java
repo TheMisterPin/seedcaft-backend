@@ -18,7 +18,7 @@ import com.michele.mocks.dto.categories.UpdateCategoryRequest;
 import com.michele.mocks.service.CategoryService;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/v1/categories")
 public class CategoryController {
 
     private final CategoryService service;

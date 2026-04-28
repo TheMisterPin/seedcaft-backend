@@ -5,7 +5,10 @@ import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.dto.products.UpdateProductRequest;
+import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
+import com.michele.mocks.exception.BadRequestException;
+import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -61,7 +64,7 @@ public class ProductService {
 
     public ProductResponse getProduct(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         return toProductResponse(product);
     }
@@ -147,7 +150,7 @@ public class ProductService {
 
     public ProductWithCategoryResponse getProductWithCategory(Long id) {
         Product product = productRepository.findWithCategoryById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         ProductCategoryResponse categoryDto = null;
 
