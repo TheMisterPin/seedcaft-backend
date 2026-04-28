@@ -3,21 +3,29 @@ package com.michele.mocks.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
 import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
-import com.michele.mocks.entity.Category;
+import com.michele.mocks.dto.categories.CreateCategoryRequest;
+import com.michele.mocks.dto.categories.UpdateCategoryRequest;
 import com.michele.mocks.service.CategoryService;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/v1/categories")
 public class CategoryController {
 
     private final CategoryService service;
@@ -37,8 +45,8 @@ public class CategoryController {
     }
 
     @GetMapping
-    public List<CategoryResponse> getAll() {
-        return service.getAll();
+    public PageResponse<CategoryResponse> getAll(@PageableDefault(size = 20) Pageable pageable) {
+        return service.getAll(pageable);
     }
 
     @GetMapping("/{id}")

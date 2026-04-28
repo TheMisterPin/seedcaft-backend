@@ -29,12 +29,6 @@ public class Product {
     @Size(max = 128)
     private String barcode;
 
-    /**
-     * Not a separate column: {@code category_id} is mapped by {@link #category} only.
-     * Used for JSON request binding (e.g. "categoryId": "1") when {@link #category} is absent.
-     */
-    @Transient
-    private String categoryId;
     private String trackingMode;
     private String uom;
 
