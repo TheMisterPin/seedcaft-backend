@@ -15,7 +15,7 @@ import com.michele.mocks.entity.Product;
 import com.michele.mocks.service.ProductService;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/v1/products")
 public class ProductController {
 
     private final ProductService service;
