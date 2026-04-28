@@ -37,20 +37,20 @@ The app listens on the default Spring Boot port (**8080**) unless you override `
 
 ## API
 
-Base path for controllers is **`/api`**.
+Official base path for controllers is **`/api/v1`**.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/health` | Liveness check (`ok`) |
-| GET/POST | `/api/products` | List or create a product |
-| POST | `/api/products/batch` | Create many products |
-| GET | `/api/products/{id}` | Product by id |
-| GET | `/api/products/{id}/with-category` | Product with category |
-| GET/POST | `/api/categories` | List or create a category |
-| POST | `/api/categories/batch` | Create many categories |
-| GET | `/api/categories/{id}` | Category by id |
-| GET | `/api/categories/{id}/with-products` | Category with products |
-| GET | `/api/categories/{id}/tree` | Category subtree |
+| GET | `/api/v1/health` | Liveness check (`{"status":"ok"}`) |
+| GET/POST | `/api/v1/products` | List or create a product |
+| POST | `/api/v1/products/batch` | Create many products |
+| GET | `/api/v1/products/{id}` | Product by id |
+| GET | `/api/v1/products/{id}/with-category` | Product with category |
+| GET/POST | `/api/v1/categories` | List or create a category |
+| POST | `/api/v1/categories/batch` | Create many categories |
+| GET | `/api/v1/categories/{id}` | Category by id |
+| GET | `/api/v1/categories/{id}/with-products` | Category with products |
+| GET | `/api/v1/categories/{id}/tree` | Category subtree |
 
 ## OpenAPI / Swagger UI
 
