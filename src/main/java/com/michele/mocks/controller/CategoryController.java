@@ -2,10 +2,13 @@ package com.michele.mocks.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,8 +39,12 @@ public class CategoryController {
     }
 
     @GetMapping
-    public List<CategoryResponse> getAll() {
-        return service.getAll();
+    public Page<CategoryResponse> getAll(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long parentId,
+            @RequestParam(required = false) String parentCode,
+            Pageable pageable) {
+        return service.getAll(q, parentId, parentCode, pageable);
     }
 
     @GetMapping("/{id}")

@@ -6,9 +6,14 @@ import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
+import com.michele.mocks.specification.ProductSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -39,10 +44,23 @@ public class ProductService {
                 .toList();
     }
 
-    public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream()
-                .map(ProductService::toProductResponse)
-                .toList();
+    public Page<ProductResponse> getAll(
+            String q,
+            Long categoryId,
+            String categoryCode,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String currency,
+            Pageable pageable) {
+        Specification<Product> specification = Specification.where(ProductSpecifications.textSearch(q))
+                .and(ProductSpecifications.hasCategoryId(categoryId))
+                .and(ProductSpecifications.hasCategoryCode(categoryCode))
+                .and(ProductSpecifications.minPrice(minPrice))
+                .and(ProductSpecifications.maxPrice(maxPrice))
+                .and(ProductSpecifications.hasCurrency(currency));
+
+        return productRepository.findAll(specification, pageable)
+                .map(ProductService::toProductResponse);
     }
 
     public ProductResponse getProduct(Long id) {

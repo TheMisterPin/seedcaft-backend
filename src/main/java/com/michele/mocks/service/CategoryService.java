@@ -7,6 +7,10 @@ import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
 import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
+import com.michele.mocks.specification.CategorySpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +25,17 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<CategoryResponse> getAll() {
-        return categoryRepository.findAll().stream()
-                .map(this::mapCategory)
-                .toList();
+    public Page<CategoryResponse> getAll(
+            String q,
+            Long parentId,
+            String parentCode,
+            Pageable pageable) {
+        Specification<Category> specification = Specification.where(CategorySpecifications.textSearch(q))
+                .and(CategorySpecifications.hasParentId(parentId))
+                .and(CategorySpecifications.hasParentCode(parentCode));
+
+        return categoryRepository.findAll(specification, pageable)
+                .map(this::mapCategory);
     }
 
     @Transactional
