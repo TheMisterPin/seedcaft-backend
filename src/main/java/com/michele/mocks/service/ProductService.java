@@ -1,18 +1,14 @@
 package com.michele.mocks.service;
 
-import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.CreateProductRequest;
 import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.dto.products.UpdateProductRequest;
-import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
-import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
-import org.springframework.data.domain.Pageable;
 import com.michele.mocks.specification.ProductSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +25,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
-    public ProductService(
-            ProductRepository productRepository, CategoryRepository categoryRepository) {
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
     }
@@ -53,8 +48,41 @@ public class ProductService {
                 .toList();
     }
 
-    public PageResponse<ProductResponse> getAll(Pageable pageable) {
-        return PageResponse.from(productRepository.findAll(pageable), ProductService::toProductResponse);
+    @Transactional
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
+
+        applyRequest(product, request);
+        return toProductResponse(productRepository.save(product));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Product not found: id=" + id);
+        }
+        productRepository.deleteById(id);
+    }
+
+    public Page<ProductResponse> getAll(
+            String q,
+            Long categoryId,
+            String categoryCode,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String currency,
+            Pageable pageable) {
+
+        Specification<Product> spec = Specification
+                .where(ProductSpecifications.textSearch(q))
+                .and(ProductSpecifications.hasCategoryId(categoryId))
+                .and(ProductSpecifications.hasCategoryCode(categoryCode))
+                .and(ProductSpecifications.minPrice(minPrice))
+                .and(ProductSpecifications.maxPrice(maxPrice))
+                .and(ProductSpecifications.hasCurrency(currency));
+
+        return productRepository.findAll(spec, pageable).map(ProductService::toProductResponse);
     }
 
     public ProductResponse getProduct(Long id) {
@@ -62,6 +90,29 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
         return toProductResponse(product);
+    }
+
+    public ProductWithCategoryResponse getProductWithCategory(Long id) {
+        Product product = productRepository.findWithCategoryById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
+
+        ProductCategoryResponse categoryDto = null;
+        if (product.getCategory() != null) {
+            var c = product.getCategory();
+            categoryDto = new ProductCategoryResponse(
+                    c.getId(),
+                    c.getName(),
+                    c.getDescription(),
+                    c.getCode(),
+                    c.getParentCode());
+        }
+
+        return new ProductWithCategoryResponse(
+                product.getId(),
+                product.getSku(),
+                product.getName(),
+                product.getDescription(),
+                categoryDto);
     }
 
     private Product toEntity(CreateProductRequest request) {
@@ -115,6 +166,11 @@ public class ProductService {
             product.setCategory(null);
             return;
         }
+
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Category not found: id=" + categoryId);
+        }
+
         product.setCategory(categoryRepository.getReferenceById(categoryId));
     }
 
@@ -141,29 +197,5 @@ public class ProductService {
                 product.getSellPrice() != null ? product.getSellPrice().doubleValue() : null,
                 product.getPurchPrice() != null ? product.getPurchPrice().doubleValue() : null,
                 product.getCurrency());
-    }
-
-    public ProductWithCategoryResponse getProductWithCategory(Long id) {
-        Product product = productRepository.findWithCategoryById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
-
-        ProductCategoryResponse categoryDto = null;
-
-        if (product.getCategory() != null) {
-            var c = product.getCategory();
-            categoryDto = new ProductCategoryResponse(
-                    c.getId(),
-                    c.getName(),
-                    c.getDescription(),
-                    c.getCode(),
-                    c.getParentCode());
-        }
-
-        return new ProductWithCategoryResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                categoryDto);
     }
 }

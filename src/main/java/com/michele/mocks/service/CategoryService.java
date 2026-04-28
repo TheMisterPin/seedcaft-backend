@@ -8,22 +8,30 @@ import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
 import com.michele.mocks.dto.categories.CreateCategoryRequest;
 import com.michele.mocks.dto.categories.UpdateCategoryRequest;
 import com.michele.mocks.entity.Category;
-import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.entity.Product;
+import com.michele.mocks.exception.BadRequestException;
+import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
+import com.michele.mocks.repository.ProductRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(CategoryRepository categoryRepository, ProductRepository productRepository) {
         this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
     }
 
     public PageResponse<CategoryResponse> getAll(Pageable pageable) {
@@ -51,10 +59,23 @@ public class CategoryService {
     @Transactional
     public CategoryResponse update(Long id, UpdateCategoryRequest request) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
         applyRequest(category, request);
         return mapCategory(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!categoryRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Category not found: id=" + id);
+        }
+
+        if (categoryRepository.existsByParentId(id) || productRepository.existsByCategoryId(id)) {
+            throw new BadRequestException("Category cannot be deleted because it has children and/or products");
+        }
+
+        categoryRepository.deleteById(id);
     }
 
     public CategoryResponse getCategory(Long id) {
@@ -81,11 +102,45 @@ public class CategoryService {
                 products);
     }
 
+    @Transactional(readOnly = true)
     public CategoryTreeResponse getCategoryTree(Long id) {
-        Category category = categoryRepository.findById(id)
+        Category rootCategory = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
-        return mapTree(category);
+        String rootCode = rootCategory.getCode();
+        if (rootCode == null || rootCode.isBlank()) {
+            return new CategoryTreeResponse(
+                    rootCategory.getId(),
+                    rootCategory.getCode(),
+                    rootCategory.getName(),
+                    rootCategory.getDescription(),
+                    List.of());
+        }
+
+        Map<String, List<Category>> categoriesByParentCode = groupByParentCode(categoryRepository.findAll());
+        return mapTree(rootCategory, categoriesByParentCode);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryTreeResponse> getFullTree() {
+        List<Category> categories = categoryRepository.findAll();
+        if (categories.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, List<Category>> categoriesByParentCode = groupByParentCode(categories);
+        return categories.stream()
+                .filter(category -> category.getParentCode() == null || category.getParentCode().isBlank())
+                .map(root -> mapTree(root, categoriesByParentCode))
+                .toList();
+    }
+
+    private Map<String, List<Category>> groupByParentCode(List<Category> categories) {
+        return categories.stream()
+                .collect(Collectors.groupingBy(
+                        category -> normalize(category.getParentCode()),
+                        LinkedHashMap::new,
+                        Collectors.toCollection(ArrayList::new)));
     }
 
     private Category toEntity(CreateCategoryRequest request) {
@@ -127,10 +182,11 @@ public class CategoryService {
                 product.getCurrency());
     }
 
-    private CategoryTreeResponse mapTree(Category category) {
-        List<CategoryTreeResponse> children = category.getChildren()
+    private CategoryTreeResponse mapTree(Category category, Map<String, List<Category>> categoriesByParentCode) {
+        List<CategoryTreeResponse> children = categoriesByParentCode
+                .getOrDefault(normalize(category.getCode()), List.of())
                 .stream()
-                .map(this::mapTree)
+                .map(child -> mapTree(child, categoriesByParentCode))
                 .toList();
 
         return new CategoryTreeResponse(
@@ -139,5 +195,9 @@ public class CategoryService {
                 category.getName(),
                 category.getDescription(),
                 children);
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 }
