@@ -1,5 +1,7 @@
 package com.michele.mocks.dto.products;
 
+import java.math.BigDecimal;
+
 public record UpdateProductRequest(
         String sku,
         String name,
@@ -14,7 +16,7 @@ public record UpdateProductRequest(
         Double heightCm,
         Integer minQuantity,
         String imageUrl,
-        Double sellPrice,
-        Double purchasePrice,
+        BigDecimal sellPrice,
+        BigDecimal purchasePrice,
         String currency) {
 }
