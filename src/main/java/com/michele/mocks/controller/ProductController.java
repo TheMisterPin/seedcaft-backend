@@ -5,13 +5,15 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.michele.mocks.dto.products.CreateProductRequest;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
-import com.michele.mocks.entity.Product;
+import com.michele.mocks.dto.products.UpdateProductRequest;
 import com.michele.mocks.service.ProductService;
 
 @RestController
@@ -25,13 +27,18 @@ public class ProductController {
     }
 
     @PostMapping
-    public ProductResponse create(@RequestBody Product product) {
-        return service.create(product);
+    public ProductResponse create(@RequestBody CreateProductRequest request) {
+        return service.create(request);
     }
 
     @PostMapping("/batch")
-    public List<ProductResponse> createBatch(@RequestBody List<Product> products) {
-        return service.createAll(products);
+    public List<ProductResponse> createBatch(@RequestBody List<CreateProductRequest> requests) {
+        return service.createAll(requests);
+    }
+
+    @PutMapping("/{id}")
+    public ProductResponse update(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+        return service.update(id, request);
     }
 
     @GetMapping

@@ -4,6 +4,8 @@ import com.michele.mocks.dto.categories.CategoryProductResponse;
 import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
 import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
+import com.michele.mocks.dto.categories.CreateCategoryRequest;
+import com.michele.mocks.dto.categories.UpdateCategoryRequest;
 import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
@@ -28,15 +30,30 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse create(Category category) {
+    public CategoryResponse create(CreateCategoryRequest request) {
+        Category category = new Category();
+        applyRequest(category, request);
         return mapCategory(categoryRepository.save(category));
     }
 
     @Transactional
-    public List<CategoryResponse> createAll(List<Category> categories) {
+    public List<CategoryResponse> createAll(List<CreateCategoryRequest> requests) {
+        List<Category> categories = requests.stream()
+                .map(this::toEntity)
+                .toList();
+
         return categoryRepository.saveAll(categories).stream()
                 .map(this::mapCategory)
                 .toList();
+    }
+
+    @Transactional
+    public CategoryResponse update(Long id, UpdateCategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        applyRequest(category, request);
+        return mapCategory(categoryRepository.save(category));
     }
 
     public CategoryResponse getCategory(Long id) {
@@ -68,6 +85,26 @@ public class CategoryService {
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         return mapTree(category);
+    }
+
+    private Category toEntity(CreateCategoryRequest request) {
+        Category category = new Category();
+        applyRequest(category, request);
+        return category;
+    }
+
+    private void applyRequest(Category category, CreateCategoryRequest request) {
+        category.setCode(request.code());
+        category.setName(request.name());
+        category.setDescription(request.description());
+        category.setParentCode(request.parentCode());
+    }
+
+    private void applyRequest(Category category, UpdateCategoryRequest request) {
+        category.setCode(request.code());
+        category.setName(request.name());
+        category.setDescription(request.description());
+        category.setParentCode(request.parentCode());
     }
 
     private CategoryResponse mapCategory(Category category) {
