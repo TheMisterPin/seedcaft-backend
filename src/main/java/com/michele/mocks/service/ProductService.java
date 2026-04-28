@@ -1,18 +1,14 @@
 package com.michele.mocks.service;
 
-import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.CreateProductRequest;
 import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.dto.products.UpdateProductRequest;
-import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
-import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
-import org.springframework.data.domain.Pageable;
 import com.michele.mocks.specification.ProductSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,8 +49,32 @@ public class ProductService {
                 .toList();
     }
 
-    public PageResponse<ProductResponse> getAll(Pageable pageable) {
-        return PageResponse.from(productRepository.findAll(pageable), ProductService::toProductResponse);
+    @Transactional
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
+        applyRequest(product, request);
+        return toProductResponse(productRepository.save(product));
+    }
+
+    public Page<ProductResponse> getAll(
+            String q,
+            Long categoryId,
+            String categoryCode,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String currency,
+            Pageable pageable) {
+
+        Specification<Product> spec = Specification.where(ProductSpecifications.textSearch(q))
+                .and(ProductSpecifications.hasCategoryId(categoryId))
+                .and(ProductSpecifications.hasCategoryCode(categoryCode))
+                .and(ProductSpecifications.minPrice(minPrice))
+                .and(ProductSpecifications.maxPrice(maxPrice))
+                .and(ProductSpecifications.hasCurrency(currency));
+
+        return productRepository.findAll(spec, pageable)
+                .map(ProductService::toProductResponse);
     }
 
     public ProductResponse getProduct(Long id) {
