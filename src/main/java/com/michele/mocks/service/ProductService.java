@@ -1,12 +1,12 @@
 package com.michele.mocks.service;
 
 import com.michele.mocks.dto.products.CreateProductRequest;
-import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.dto.products.UpdateProductRequest;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.exception.ResourceNotFoundException;
+import com.michele.mocks.mapper.ProductMapper;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
 import com.michele.mocks.specification.ProductSpecifications;
@@ -35,7 +35,7 @@ public class ProductService {
     public ProductResponse create(CreateProductRequest request) {
         Product product = new Product();
         applyRequest(product, request);
-        return toProductResponse(productRepository.save(product));
+        return ProductMapper.toResponse(productRepository.save(product));
     }
 
     @Transactional
@@ -45,16 +45,8 @@ public class ProductService {
                 .toList();
 
         return productRepository.saveAll(products).stream()
-                .map(ProductService::toProductResponse)
+                .map(ProductMapper::toResponse)
                 .toList();
-    }
-
-    @Transactional
-    public ProductResponse update(Long id, UpdateProductRequest request) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
-        applyRequest(product, request);
-        return toProductResponse(productRepository.save(product));
     }
 
     public Page<ProductResponse> getAll(
@@ -65,23 +57,27 @@ public class ProductService {
             BigDecimal maxPrice,
             String currency,
             Pageable pageable) {
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new BadRequestException("minPrice cannot be greater than maxPrice");
+        }
 
-        Specification<Product> spec = Specification.where(ProductSpecifications.textSearch(q))
+        Specification<Product> specification = Specification
+                .where(ProductSpecifications.textSearch(q))
                 .and(ProductSpecifications.hasCategoryId(categoryId))
                 .and(ProductSpecifications.hasCategoryCode(categoryCode))
                 .and(ProductSpecifications.minPrice(minPrice))
                 .and(ProductSpecifications.maxPrice(maxPrice))
                 .and(ProductSpecifications.hasCurrency(currency));
 
-        return productRepository.findAll(spec, pageable)
-                .map(ProductService::toProductResponse);
+        return productRepository.findAll(specification, pageable)
+                .map(ProductMapper::toResponse);
     }
 
     public ProductResponse getProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
-        return toProductResponse(product);
+        return ProductMapper.toResponse(product);
     }
 
     private Product toEntity(CreateProductRequest request) {
@@ -103,8 +99,8 @@ public class ProductService {
         product.setHeightCm(request.heightCm() != null ? request.heightCm() : 0d);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
         product.setImageUrl(request.imageUrl());
-        product.setSellPrice(toBigDecimal(request.sellPrice()));
-        product.setPurchPrice(toBigDecimal(request.purchasePrice()));
+        product.setSellPrice(request.sellPrice());
+        product.setPurchPrice(request.purchasePrice());
         product.setCurrency(request.currency());
 
         assignCategory(product, request.categoryId());
@@ -123,8 +119,8 @@ public class ProductService {
         product.setHeightCm(request.heightCm() != null ? request.heightCm() : 0d);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
         product.setImageUrl(request.imageUrl());
-        product.setSellPrice(toBigDecimal(request.sellPrice()));
-        product.setPurchPrice(toBigDecimal(request.purchasePrice()));
+        product.setSellPrice(request.sellPrice());
+        product.setPurchPrice(request.purchasePrice());
         product.setCurrency(request.currency());
 
         assignCategory(product, request.categoryId());
@@ -138,52 +134,27 @@ public class ProductService {
         product.setCategory(categoryRepository.getReferenceById(categoryId));
     }
 
-    private static BigDecimal toBigDecimal(Double value) {
-        return value != null ? BigDecimal.valueOf(value) : null;
-    }
-
-    private static String categoryIdForResponse(Product product) {
-        if (product.getCategory() != null) {
-            return String.valueOf(product.getCategory().getId());
-        }
-        return null;
-    }
-
-    private static ProductResponse toProductResponse(Product product) {
-        return new ProductResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                product.getBarcode(),
-                categoryIdForResponse(product),
-                product.getImageUrl(),
-                product.getSellPrice() != null ? product.getSellPrice().doubleValue() : null,
-                product.getPurchPrice() != null ? product.getPurchPrice().doubleValue() : null,
-                product.getCurrency());
-    }
-
     public ProductWithCategoryResponse getProductWithCategory(Long id) {
         Product product = productRepository.findWithCategoryById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
 
-        ProductCategoryResponse categoryDto = null;
+        return ProductMapper.toWithCategoryResponse(product);
+    }
 
-        if (product.getCategory() != null) {
-            var c = product.getCategory();
-            categoryDto = new ProductCategoryResponse(
-                    c.getId(),
-                    c.getName(),
-                    c.getDescription(),
-                    c.getCode(),
-                    c.getParentCode());
+    @Transactional
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: id=" + id));
+
+        applyRequest(product, request);
+        return ProductMapper.toResponse(productRepository.save(product));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Product not found: id=" + id);
         }
-
-        return new ProductWithCategoryResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                categoryDto);
+        productRepository.deleteById(id);
     }
 }
