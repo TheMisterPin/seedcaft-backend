@@ -2,6 +2,8 @@ package com.michele.mocks.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.entity.Product;
@@ -35,8 +38,8 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> getAll() {
-        return service.getAll();
+    public PageResponse<ProductResponse> getAll(@PageableDefault(size = 20) Pageable pageable) {
+        return service.getAll(pageable);
     }
 
     @GetMapping("/{id}")

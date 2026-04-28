@@ -1,5 +1,6 @@
 package com.michele.mocks.service;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.categories.CategoryProductResponse;
 import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
@@ -7,6 +8,7 @@ import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
 import com.michele.mocks.entity.Category;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +23,8 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<CategoryResponse> getAll() {
-        return categoryRepository.findAll().stream()
-                .map(this::mapCategory)
-                .toList();
+    public PageResponse<CategoryResponse> getAll(Pageable pageable) {
+        return PageResponse.from(categoryRepository.findAll(pageable), this::mapCategory);
     }
 
     @Transactional

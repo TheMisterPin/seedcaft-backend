@@ -1,11 +1,13 @@
 package com.michele.mocks.service;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +41,8 @@ public class ProductService {
                 .toList();
     }
 
-    public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream()
-                .map(ProductService::toProductResponse)
-                .toList();
+    public PageResponse<ProductResponse> getAll(Pageable pageable) {
+        return PageResponse.from(productRepository.findAll(pageable), ProductService::toProductResponse);
     }
 
     public ProductResponse getProduct(Long id) {
