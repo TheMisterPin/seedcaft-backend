@@ -35,6 +35,26 @@ mvn spring-boot:run
 
 The app listens on the default Spring Boot port (**8080**) unless you override `server.port`.
 
+## Docker
+
+Build the image from the project root:
+
+```bash
+docker build -t seedcraft-backend .
+```
+
+Run the container and publish the API on port 8080:
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/mocks \
+  -e SPRING_DATASOURCE_USERNAME=mocks_admin \
+  -e SPRING_DATASOURCE_PASSWORD=password \
+  seedcraft-backend
+```
+
+> If your database is running in another container or host, change the datasource environment variables accordingly.
+
 ## API
 
 Official base path for controllers is **`/api/v1`**.
