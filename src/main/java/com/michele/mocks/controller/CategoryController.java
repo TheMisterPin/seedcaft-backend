@@ -2,6 +2,8 @@ package com.michele.mocks.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
 import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
@@ -46,12 +49,8 @@ public class CategoryController {
     }
 
     @GetMapping
-    public Page<CategoryResponse> getAll(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Long parentId,
-            @RequestParam(required = false) String parentCode,
-            Pageable pageable) {
-        return service.getAll(q, parentId, parentCode, pageable);
+    public PageResponse<CategoryResponse> getAll(@PageableDefault(size = 20) Pageable pageable) {
+        return service.getAll(pageable);
     }
 
     @GetMapping("/{id}")

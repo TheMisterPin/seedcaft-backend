@@ -1,5 +1,6 @@
 package com.michele.mocks.service;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.products.CreateProductRequest;
 import com.michele.mocks.dto.products.ProductCategoryResponse;
 import com.michele.mocks.dto.products.ProductResponse;
@@ -11,6 +12,7 @@ import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
+import org.springframework.data.domain.Pageable;
 import com.michele.mocks.specification.ProductSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,19 +53,8 @@ public class ProductService {
                 .toList();
     }
 
-    @Transactional
-    public ProductResponse update(Long id, UpdateProductRequest request) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        applyRequest(product, request);
-        return toProductResponse(productRepository.save(product));
-    }
-
-    public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream()
-                .map(ProductService::toProductResponse)
-                .toList();
+    public PageResponse<ProductResponse> getAll(Pageable pageable) {
+        return PageResponse.from(productRepository.findAll(pageable), ProductService::toProductResponse);
     }
 
     public ProductResponse getProduct(Long id) {

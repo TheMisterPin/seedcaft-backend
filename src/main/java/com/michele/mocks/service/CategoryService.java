@@ -1,5 +1,6 @@
 package com.michele.mocks.service;
 
+import com.michele.mocks.dto.PageResponse;
 import com.michele.mocks.dto.categories.CategoryProductResponse;
 import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
@@ -10,10 +11,7 @@ import com.michele.mocks.entity.Category;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
-import com.michele.mocks.specification.CategorySpecifications;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,17 +26,8 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
-    public Page<CategoryResponse> getAll(
-            String q,
-            Long parentId,
-            String parentCode,
-            Pageable pageable) {
-        Specification<Category> specification = Specification.where(CategorySpecifications.textSearch(q))
-                .and(CategorySpecifications.hasParentId(parentId))
-                .and(CategorySpecifications.hasParentCode(parentCode));
-
-        return categoryRepository.findAll(specification, pageable)
-                .map(this::mapCategory);
+    public PageResponse<CategoryResponse> getAll(Pageable pageable) {
+        return PageResponse.from(categoryRepository.findAll(pageable), this::mapCategory);
     }
 
     @Transactional
