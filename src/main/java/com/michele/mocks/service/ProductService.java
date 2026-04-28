@@ -5,7 +5,6 @@ import com.michele.mocks.dto.products.ProductResponse;
 import com.michele.mocks.dto.products.ProductWithCategoryResponse;
 import com.michele.mocks.dto.products.UpdateProductRequest;
 import com.michele.mocks.entity.Product;
-import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.mapper.ProductMapper;
 import com.michele.mocks.repository.CategoryRepository;
