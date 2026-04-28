@@ -11,6 +11,10 @@ import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.repository.ProductRepository;
+import com.michele.mocks.specification.ProductSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

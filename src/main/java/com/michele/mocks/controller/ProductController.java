@@ -1,12 +1,16 @@
 package com.michele.mocks.controller;
 
 import java.util.List;
+import java.math.BigDecimal;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,8 +46,15 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> getAll() {
-        return service.getAll();
+    public Page<ProductResponse> getAll(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String categoryCode,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String currency,
+            Pageable pageable) {
+        return service.getAll(q, categoryId, categoryCode, minPrice, maxPrice, currency, pageable);
     }
 
     @GetMapping("/{id}")
