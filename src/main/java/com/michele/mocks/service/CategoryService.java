@@ -5,6 +5,7 @@ import com.michele.mocks.dto.categories.CategoryResponse;
 import com.michele.mocks.dto.categories.CategoryTreeResponse;
 import com.michele.mocks.dto.categories.CategoryWithProductsResponse;
 import com.michele.mocks.entity.Category;
+import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.entity.Product;
 import com.michele.mocks.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
@@ -41,14 +42,14 @@ public class CategoryService {
 
     public CategoryResponse getCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
         return mapCategory(category);
     }
 
     public CategoryWithProductsResponse getCategoryWithProducts(Long id) {
         Category category = categoryRepository.findWithProductsById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
         List<CategoryProductResponse> products = category.getProducts()
                 .stream()
@@ -65,7 +66,7 @@ public class CategoryService {
 
     public CategoryTreeResponse getCategoryTree(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: id=" + id));
 
         return mapTree(category);
     }
