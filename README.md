@@ -12,7 +12,7 @@ The project depends on a **Spring Boot snapshot** parent; Maven resolves it from
 
 ## Database
 
-Create a database and user that match your settings. The app now reads DB connection values from `.env` (or environment variables).
+Create a database and user that match your settings. The app reads DB connection values from environment variables (`DB_*`, with fallback to `SPRING_DATASOURCE_*`) so credentials are not hardcoded.
 
 1. Copy the example file:
 
@@ -56,7 +56,15 @@ Run the container and publish the API on port 8080 using your `.env` file:
 docker run --rm -p 8080:8080 --env-file .env seedcraft-backend
 ```
 
-> If your database is running in another container or host, update `DB_URL` in `.env` accordingly (for example, `host.docker.internal` on macOS/Windows).
+Or pass standard Spring variables directly (useful on managed deploy platforms):
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/mocks \
+  -e SPRING_DATASOURCE_USERNAME=mocks_admin \
+  -e SPRING_DATASOURCE_PASSWORD=password \
+  seedcraft-backend
+```
 
 ## API
 
