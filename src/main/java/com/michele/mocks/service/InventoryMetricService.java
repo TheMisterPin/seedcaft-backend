@@ -15,6 +15,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import com.michele.mocks.util.MetricRange;
+
 @Service
 @RequiredArgsConstructor
 public class InventoryMetricService {
@@ -39,16 +41,7 @@ public class InventoryMetricService {
     }
 
     public int parseRangeDays(String range) {
-        if (range == null || range.isBlank()) {
-            return 30;
-        }
-
-        return switch (range.trim().toLowerCase()) {
-            case "7d" -> 7;
-            case "30d" -> 30;
-            case "90d" -> 90;
-            default -> throw new BadRequestException("Unsupported range. Allowed values: 7d, 30d, 90d");
-        };
+        return MetricRange.parse(range).days();
     }
 
     public List<InventoryMetricSnapshot> findSnapshotsInRange(
