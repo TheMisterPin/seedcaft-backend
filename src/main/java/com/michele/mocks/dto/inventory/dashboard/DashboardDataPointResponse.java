@@ -10,5 +10,9 @@ public record DashboardDataPointResponse(
         @Size(max = 64) String formattedValue,
         BigDecimal percentage,
         BigDecimal trendValue,
-        @Size(max = 16) String trendDirection) {
+        @Size(max = 16) String trendDirection,
+        BigDecimal secondaryValue,
+        @Size(max = 64) String secondaryFormattedValue,
+        @Size(max = 128) String warehouseCode,
+        @Size(max = 255) String warehouseName) {
 }
