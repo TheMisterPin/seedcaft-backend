@@ -26,7 +26,7 @@ public class InventoryDashboardService {
 
     public LowStockTableDashboardResponse buildLowStockTable(String scopeCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
-        DashboardMetaResponse meta = defaultMeta("Low Stock", DashboardType.TABLE, MetricScopeType.WAREHOUSE, scopeCode);
+        DashboardMetaResponse meta = buildMeta("Low Stock", DashboardType.TABLE, "Items that are below reorder threshold.", null, scopeCode, null, resolvedLimit);
         List<TableColumnResponse> columns = List.of(
                 new TableColumnResponse("label", "Item"),
                 new TableColumnResponse("value", "Available"),
@@ -37,12 +37,12 @@ public class InventoryDashboardService {
 
     public TopBinsDashboardResponse buildTopBins(String scopeCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
-        DashboardMetaResponse meta = defaultMeta("Top Bins", DashboardType.BAR, MetricScopeType.WAREHOUSE, scopeCode);
+        DashboardMetaResponse meta = buildMeta("Top Bins", DashboardType.BAR, "Bins with the highest utilization.", null, scopeCode, null, resolvedLimit);
         return new TopBinsDashboardResponse(meta, inventoryStockService.getTopBinsData(resolvedLimit));
     }
 
     public BinHeatmapDashboardResponse buildBinHeatmap(String scopeCode) {
-        DashboardMetaResponse meta = defaultMeta("Bin Utilization Heatmap", DashboardType.HEATMAP, MetricScopeType.WAREHOUSE, scopeCode);
+        DashboardMetaResponse meta = buildMeta("Bin Utilization Heatmap", DashboardType.HEATMAP, "Utilization distribution across warehouse bins.", null, scopeCode, null, null);
         return new BinHeatmapDashboardResponse(meta, inventoryStockService.getBinHeatmapData(scopeCode));
     }
 
@@ -52,7 +52,7 @@ public class InventoryDashboardService {
                 .map(DashboardDataPointResponse::value)
                 .filter(v -> v != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        DashboardMetaResponse meta = defaultMeta("Stock Composition", DashboardType.DONUT, MetricScopeType.WAREHOUSE, scopeCode);
+        DashboardMetaResponse meta = buildMeta("Stock Composition", DashboardType.DONUT, "Current stock split by tracked segments.", null, scopeCode, null, null);
         return new StockCompositionDashboardResponse(meta, total, segments);
     }
 
@@ -74,7 +74,7 @@ public class InventoryDashboardService {
                 trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat"
         );
 
-        DashboardMetaResponse meta = defaultMeta("Inventory KPI (" + metricRange.code() + ")", DashboardType.KPI, MetricScopeType.WAREHOUSE, scopeCode);
+        DashboardMetaResponse meta = buildMeta("Inventory KPI (" + metricRange.code() + ")", DashboardType.KPI, "KPI summary for the selected time range.", metricRange.code(), scopeCode, null, null);
         return new KpiDashboardResponse(meta, List.of(totalUnits));
     }
 
@@ -132,11 +132,14 @@ public class InventoryDashboardService {
                 ))
                 .toList();
 
-        DashboardMetaResponse meta = defaultMeta(
+        DashboardMetaResponse meta = buildMeta(
                 "Category Donut (" + metricRange.code() + ")",
                 DashboardType.DONUT,
-                MetricScopeType.CATEGORY,
-                categoryCode
+                "Inventory value distribution by category.",
+                metricRange.code(),
+                warehouseCode,
+                categoryCode,
+                null
         );
         return new CategoryDonutDashboardResponse(meta, data);
     }
@@ -169,11 +172,14 @@ public class InventoryDashboardService {
                 ))
                 .toList();
 
-        DashboardMetaResponse meta = defaultMeta(
+        DashboardMetaResponse meta = buildMeta(
                 "Warehouse Fill Trend (" + metricRange.code() + ")",
                 DashboardType.LINE,
-                MetricScopeType.WAREHOUSE,
-                warehouseCode
+                "Warehouse fill percentage trend over time.",
+                metricRange.code(),
+                warehouseCode,
+                categoryCode,
+                null
         );
         return new LineChartDashboardResponse(meta, "date", "fillPercentage", series);
     }
@@ -220,11 +226,14 @@ public class InventoryDashboardService {
                 ))
                 .toList();
 
-        DashboardMetaResponse meta = defaultMeta(
+        DashboardMetaResponse meta = buildMeta(
                 "Inventory Value Trend (" + metricRange.code() + ")",
                 DashboardType.LINE,
-                scopeType,
-                warehouseCode
+                "Inventory value trend for the selected scope.",
+                metricRange.code(),
+                warehouseCode,
+                categoryCode,
+                null
         );
         return new LineChartDashboardResponse(
                 meta,
@@ -244,14 +253,31 @@ public class InventoryDashboardService {
         return limit;
     }
 
-    private DashboardMetaResponse defaultMeta(String title, DashboardType type, MetricScopeType scopeType, String scopeCode) {
+    private DashboardMetaResponse buildMeta(
+            String title,
+            DashboardType type,
+            String description,
+            String range,
+            String warehouseCode,
+            String categoryCode,
+            Integer limit
+    ) {
+        String scope = categoryCode != null && !categoryCode.isBlank()
+                ? MetricScopeType.CATEGORY.name().toLowerCase()
+                : warehouseCode != null && !warehouseCode.isBlank()
+                ? MetricScopeType.WAREHOUSE.name().toLowerCase()
+                : MetricScopeType.GLOBAL.name().toLowerCase();
+
         return new DashboardMetaResponse(
                 title,
                 type,
                 Instant.now(),
-                scopeType.name().toLowerCase(),
-                scopeCode,
-                scopeCode
+                description,
+                scope,
+                range,
+                warehouseCode,
+                categoryCode,
+                limit
         );
     }
 }
