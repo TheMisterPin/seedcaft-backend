@@ -82,14 +82,21 @@ public class InventoryDashboardService {
         MetricRange metricRange = MetricRange.parse(range);
         int resolvedLimit = validateLimit(limit);
 
-        Map<String, Object> sections = new LinkedHashMap<>();
-        sections.put("kpi", buildKpis(metricRange.code(), scopeCode));
-        sections.put("lowStock", buildLowStockTable(scopeCode, resolvedLimit));
-        sections.put("topBins", buildTopBins(scopeCode, resolvedLimit));
-        sections.put("binHeatmap", buildBinHeatmap(scopeCode));
-        sections.put("stockComposition", buildStockComposition(scopeCode));
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("range", metricRange.code());
+        meta.put("limit", resolvedLimit);
 
-        return new InventoryDashboardResponse(sections);
+        Map<String, Object> sections = new LinkedHashMap<>();
+        sections.put("kpis", buildKpis(metricRange.code(), scopeCode));
+        sections.put("categoryDonut", getCategoryDonut(metricRange.code(), scopeCode, null));
+        sections.put("warehouseFillLine", getWarehouseFillLine(metricRange.code(), scopeCode, null));
+        sections.put("stockComposition", getStockComposition(metricRange.code(), scopeCode, null));
+        sections.put("topBins", getTopBins(metricRange.code(), scopeCode, null, resolvedLimit));
+        sections.put("binHeatmap", getBinHeatmap(metricRange.code(), scopeCode, null, resolvedLimit));
+        sections.put("lowStock", getLowStock(metricRange.code(), scopeCode, null, resolvedLimit));
+        sections.put("inventoryValueLine", getInventoryValueLine(metricRange.code(), scopeCode, null));
+
+        return new InventoryDashboardResponse(meta, sections);
     }
 
     public InventoryDashboardResponse getDashboard(String range, String warehouseCode, String categoryCode, Integer limit) {
