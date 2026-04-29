@@ -10,7 +10,10 @@ public record DashboardMetaResponse(
         @NotBlank @Size(max = 255) String title,
         @NotNull DashboardType type,
         @NotNull Instant generatedAt,
-        @Size(max = 64) String scopeType,
-        @Size(max = 128) String scopeId,
-        @Size(max = 255) String scopeName) {
+        @Size(max = 512) String description,
+        @Size(max = 64) String scope,
+        @Size(max = 32) String range,
+        @Size(max = 128) String warehouseCode,
+        @Size(max = 128) String categoryCode,
+        Integer limit) {
 }
