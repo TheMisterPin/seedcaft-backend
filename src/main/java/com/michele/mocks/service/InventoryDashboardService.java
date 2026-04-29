@@ -1,6 +1,7 @@
 package com.michele.mocks.service;
 
 import com.michele.mocks.dto.inventory.dashboard.*;
+import com.michele.mocks.entity.InventoryMetricSnapshot;
 import com.michele.mocks.entity.enums.MetricScopeType;
 import com.michele.mocks.exception.BadRequestException;
 import com.michele.mocks.util.DashboardFormatters;
@@ -9,10 +10,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -98,11 +101,74 @@ public class InventoryDashboardService {
     }
 
     public CategoryDonutDashboardResponse getCategoryDonut(String range, String warehouseCode, String categoryCode) {
-        throw new UnsupportedOperationException("Not implemented");
+        MetricRange metricRange = MetricRange.parse(range);
+        List<DashboardDataPointResponse> data = inventoryMetricService
+                .findSnapshotsInRange(MetricScopeType.CATEGORY, null, metricRange.code())
+                .stream()
+                .collect(Collectors.toMap(
+                        snapshot -> snapshot.getScopeCode().toUpperCase(),
+                        snapshot -> snapshot,
+                        (left, right) -> left.getSnapshotDate().isAfter(right.getSnapshotDate()) ? left : right
+                ))
+                .values()
+                .stream()
+                .sorted(Comparator.comparing((InventoryMetricSnapshot s) -> s.getInventoryValue(), Comparator.nullsLast(BigDecimal::compareTo)).reversed())
+                .toList()
+                .stream()
+                .map(snapshot -> new DashboardDataPointResponse(
+                        snapshot.getScopeName(),
+                        snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
+                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
+                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                        null,
+                        null
+                ))
+                .toList();
+
+        DashboardMetaResponse meta = defaultMeta(
+                "Category Donut (" + metricRange.code() + ")",
+                DashboardType.DONUT,
+                MetricScopeType.CATEGORY,
+                categoryCode
+        );
+        return new CategoryDonutDashboardResponse(meta, data);
     }
 
     public LineChartDashboardResponse getWarehouseFillLine(String range, String warehouseCode, String categoryCode) {
-        throw new UnsupportedOperationException("Not implemented");
+        MetricRange metricRange = MetricRange.parse(range);
+        List<LineChartSeriesResponse> series = inventoryMetricService
+                .findSnapshotsInRange(MetricScopeType.WAREHOUSE, warehouseCode, metricRange.code())
+                .stream()
+                .collect(Collectors.groupingBy(
+                        snapshot -> snapshot.getScopeName() == null ? snapshot.getScopeCode() : snapshot.getScopeName(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ))
+                .entrySet()
+                .stream()
+                .map(entry -> new LineChartSeriesResponse(
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
+                                .map(snapshot -> new DashboardDataPointResponse(
+                                        DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
+                                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                                        DashboardFormatters.formatPercentage(snapshot.getFillPercentage()),
+                                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                                        null,
+                                        null
+                                ))
+                                .toList()
+                ))
+                .toList();
+
+        DashboardMetaResponse meta = defaultMeta(
+                "Warehouse Fill Trend (" + metricRange.code() + ")",
+                DashboardType.LINE,
+                MetricScopeType.WAREHOUSE,
+                warehouseCode
+        );
+        return new LineChartDashboardResponse(meta, "date", "fillPercentage", series);
     }
 
     public StockCompositionDashboardResponse getStockComposition(String range, String warehouseCode, String categoryCode) {
@@ -122,7 +188,43 @@ public class InventoryDashboardService {
     }
 
     public LineChartDashboardResponse getInventoryValueLine(String range, String warehouseCode, String categoryCode) {
-        throw new UnsupportedOperationException("Not implemented");
+        MetricRange metricRange = MetricRange.parse(range);
+        MetricScopeType scopeType = warehouseCode == null || warehouseCode.isBlank()
+                ? MetricScopeType.GLOBAL
+                : MetricScopeType.WAREHOUSE;
+
+        List<InventoryMetricSnapshot> snapshots = inventoryMetricService
+                .findSnapshotsInRange(scopeType, warehouseCode, metricRange.code());
+
+        String seriesName = snapshots.stream()
+                .findFirst()
+                .map(snapshot -> snapshot.getScopeName() == null ? snapshot.getScopeCode() : snapshot.getScopeName())
+                .orElse(scopeType == MetricScopeType.GLOBAL ? "Global" : warehouseCode);
+
+        List<DashboardDataPointResponse> points = snapshots.stream()
+                .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
+                .map(snapshot -> new DashboardDataPointResponse(
+                        DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
+                        snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
+                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
+                        null,
+                        null,
+                        null
+                ))
+                .toList();
+
+        DashboardMetaResponse meta = defaultMeta(
+                "Inventory Value Trend (" + metricRange.code() + ")",
+                DashboardType.LINE,
+                scopeType,
+                warehouseCode
+        );
+        return new LineChartDashboardResponse(
+                meta,
+                "date",
+                "inventoryValue",
+                List.of(new LineChartSeriesResponse(seriesName, points))
+        );
     }
 
     private int validateLimit(Integer limit) {
