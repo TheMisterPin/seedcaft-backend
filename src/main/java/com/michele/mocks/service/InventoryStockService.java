@@ -8,6 +8,7 @@ import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.InventoryStockRepository;
 import com.michele.mocks.repository.StorageBinRepository;
 import com.michele.mocks.repository.WarehouseRepository;
+import com.michele.mocks.util.DashboardFormatters;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -86,7 +87,7 @@ public class InventoryStockService {
         return new DashboardDataPointResponse(
                 label,
                 BigDecimal.valueOf(stock.getQuantityAvailable()),
-                stock.getQuantityAvailable() + " units",
+                DashboardFormatters.formatInteger(stock.getQuantityAvailable()) + " units",
                 null,
                 BigDecimal.valueOf(stock.getReorderPoint() - stock.getQuantityAvailable()),
                 stock.getQuantityAvailable() <= 0 ? "down" : "flat"
@@ -105,7 +106,8 @@ public class InventoryStockService {
         return new DashboardDataPointResponse(
                 label,
                 BigDecimal.valueOf(bin.getCurrentStorageUnits()),
-                bin.getCurrentStorageUnits() + "/" + bin.getMaxStorageUnits(),
+                DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0))
+                        + "/" + DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getMaxStorageUnits(), 0)),
                 utilization,
                 null,
                 null
@@ -124,7 +126,7 @@ public class InventoryStockService {
         return new DashboardDataPointResponse(
                 label,
                 BigDecimal.valueOf(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0)),
-                utilization + "%",
+                DashboardFormatters.formatPercentage(utilization),
                 utilization,
                 null,
                 null
@@ -140,7 +142,7 @@ public class InventoryStockService {
         return new DashboardDataPointResponse(
                 label,
                 BigDecimal.valueOf(value),
-                value + " units",
+                DashboardFormatters.formatInteger(value) + " units",
                 percentage,
                 null,
                 null
