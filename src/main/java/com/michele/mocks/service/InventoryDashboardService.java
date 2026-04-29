@@ -48,11 +48,15 @@ public class InventoryDashboardService {
 
     public StockCompositionDashboardResponse buildStockComposition(String scopeCode) {
         List<DashboardDataPointResponse> segments = inventoryStockService.getStockCompositionData(scopeCode);
-        BigDecimal total = segments.stream()
+        BigDecimal totalValue = segments.stream()
                 .map(DashboardDataPointResponse::value)
                 .filter(v -> v != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        DashboardMetaResponse meta = buildMeta("Stock Composition", DashboardType.DONUT, "Current stock split by tracked segments.", null, scopeCode, null, null);
+        DashboardMetaResponse meta = buildMeta("Stock Composition", DashboardType.PROGRESS, "Current stock split by tracked segments.", null, scopeCode, null, null);
+        StockCompositionDashboardResponse.TotalResponse total = new StockCompositionDashboardResponse.TotalResponse(
+                totalValue,
+                DashboardFormatters.formatInteger(totalValue.longValue()) + " units"
+        );
         return new StockCompositionDashboardResponse(meta, total, segments);
     }
 
@@ -71,7 +75,11 @@ public class InventoryDashboardService {
                 DashboardFormatters.formatInteger(latestUnits) + " units",
                 null,
                 trend,
-                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat"
+                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
+                null,
+                null,
+                null,
+                null
         );
 
         DashboardMetaResponse meta = buildMeta("Inventory KPI (" + metricRange.code() + ")", DashboardType.KPI, "KPI summary for the selected time range.", metricRange.code(), scopeCode, null, null);
@@ -128,6 +136,10 @@ public class InventoryDashboardService {
                         DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null
                 ))
                 .toList();
@@ -165,6 +177,10 @@ public class InventoryDashboardService {
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
                                         DashboardFormatters.formatPercentage(snapshot.getFillPercentage()),
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                                        null,
+                                        null,
+                                        null,
+                                        null,
                                         null,
                                         null
                                 ))
@@ -220,6 +236,9 @@ public class InventoryDashboardService {
                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                         snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
                         DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null

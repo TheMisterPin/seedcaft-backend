@@ -64,16 +64,12 @@ public class InventoryStockService {
         long available = sumSafe(stockList, InventoryStock::getQuantityAvailable);
         long reserved = sumSafe(stockList, InventoryStock::getQuantityReserved);
         long blocked = sumSafe(stockList, InventoryStock::getQuantityBlocked);
-        long onHand = sumSafe(stockList, InventoryStock::getQuantityOnHand);
-        long other = Math.max(0, onHand - (available + reserved + blocked));
-
-        long total = available + reserved + blocked + other;
+        long total = available + reserved + blocked;
 
         List<DashboardDataPointResponse> segments = new ArrayList<>();
         segments.add(toSegment("Available", available, total));
         segments.add(toSegment("Reserved", reserved, total));
         segments.add(toSegment("Blocked", blocked, total));
-        segments.add(toSegment("Other", other, total));
         return segments;
     }
 
@@ -90,7 +86,11 @@ public class InventoryStockService {
                 DashboardFormatters.formatInteger(stock.getQuantityAvailable()) + " units",
                 null,
                 BigDecimal.valueOf(stock.getReorderPoint() - stock.getQuantityAvailable()),
-                stock.getQuantityAvailable() <= 0 ? "down" : "flat"
+                stock.getQuantityAvailable() <= 0 ? "down" : "flat",
+                null,
+                null,
+                null,
+                null
         );
     }
 
@@ -105,12 +105,16 @@ public class InventoryStockService {
         String label = bin.getWarehouse().getCode() + " - " + bin.getCode();
         return new DashboardDataPointResponse(
                 label,
-                BigDecimal.valueOf(bin.getCurrentStorageUnits()),
+                utilization,
+                DashboardFormatters.formatPercentage(utilization),
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0)),
                 DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0))
                         + "/" + DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getMaxStorageUnits(), 0)),
-                utilization,
-                null,
-                null
+                bin.getWarehouse().getCode(),
+                bin.getWarehouse().getName()
         );
     }
 
@@ -129,6 +133,10 @@ public class InventoryStockService {
                 DashboardFormatters.formatPercentage(utilization),
                 utilization,
                 null,
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }
@@ -144,6 +152,10 @@ public class InventoryStockService {
                 BigDecimal.valueOf(value),
                 DashboardFormatters.formatInteger(value) + " units",
                 percentage,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null
         );

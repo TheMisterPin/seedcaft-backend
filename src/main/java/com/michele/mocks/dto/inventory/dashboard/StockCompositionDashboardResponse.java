@@ -8,6 +8,11 @@ import java.util.List;
 
 public record StockCompositionDashboardResponse(
         @NotNull @Valid DashboardMetaResponse meta,
-        BigDecimal total,
+        @NotNull @Valid TotalResponse total,
         List<@Valid DashboardDataPointResponse> segments) {
+
+    public record TotalResponse(
+            @NotNull BigDecimal value,
+            @NotNull String formattedValue) {
+    }
 }
