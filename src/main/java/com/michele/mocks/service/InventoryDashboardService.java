@@ -24,7 +24,7 @@ public class InventoryDashboardService {
     private final InventoryMetricService inventoryMetricService;
     private final InventoryStockService inventoryStockService;
 
-    public LowStockTableDashboardResponse buildLowStockTable(String scopeCode, Integer limit) {
+    public LowStockTableDashboardResponse buildLowStockTable(String scopeCode, String categoryCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
         DashboardMetaResponse meta = buildMeta("Low Stock", DashboardType.TABLE, "Items that are below reorder threshold.", null, scopeCode, null, resolvedLimit);
         List<TableColumnResponse> columns = List.of(
@@ -36,22 +36,22 @@ public class InventoryDashboardService {
                 new TableColumnResponse("reorderPoint", "reorderPoint"),
                 new TableColumnResponse("status", "status")
         );
-        return new LowStockTableDashboardResponse(meta, columns, inventoryStockService.getLowStockTableRows(resolvedLimit));
+        return new LowStockTableDashboardResponse(meta, columns, inventoryStockService.getLowStockTableRows(resolvedLimit, scopeCode, categoryCode));
     }
 
-    public TopBinsDashboardResponse buildTopBins(String scopeCode, Integer limit) {
+    public TopBinsDashboardResponse buildTopBins(String scopeCode, String categoryCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
         DashboardMetaResponse meta = buildMeta("Top Bins", DashboardType.BAR, "Bins with the highest utilization.", null, scopeCode, null, resolvedLimit);
-        return new TopBinsDashboardResponse(meta, inventoryStockService.getTopBinsData(resolvedLimit));
+        return new TopBinsDashboardResponse(meta, inventoryStockService.getTopBinsData(resolvedLimit, scopeCode, categoryCode));
     }
 
-    public BinHeatmapDashboardResponse buildBinHeatmap(String scopeCode) {
+    public BinHeatmapDashboardResponse buildBinHeatmap(String scopeCode, String categoryCode) {
         DashboardMetaResponse meta = buildMeta("Bin Utilization Heatmap", DashboardType.HEATMAP, "Utilization distribution across warehouse bins.", null, scopeCode, null, null);
-        return new BinHeatmapDashboardResponse(meta, inventoryStockService.getBinHeatmapData(scopeCode));
+        return new BinHeatmapDashboardResponse(meta, inventoryStockService.getBinHeatmapData(scopeCode, categoryCode));
     }
 
-    public StockCompositionDashboardResponse buildStockComposition(String scopeCode) {
-        List<DashboardDataPointResponse> segments = inventoryStockService.getStockCompositionData(scopeCode);
+    public StockCompositionDashboardResponse buildStockComposition(String scopeCode, String categoryCode) {
+        List<DashboardDataPointResponse> segments = inventoryStockService.getStockCompositionData(scopeCode, categoryCode);
         BigDecimal totalValue = segments.stream()
                 .map(DashboardDataPointResponse::value)
                 .filter(v -> v != null)
@@ -123,6 +123,8 @@ public class InventoryDashboardService {
     }
 
     public InventoryDashboardResponse getDashboard(String range, String warehouseCode, String categoryCode, Integer limit) {
+        MetricRange.parse(range);
+        validateLimit(limit);
         return buildFullDashboard(range, limit, warehouseCode);
     }
 
@@ -218,19 +220,23 @@ public class InventoryDashboardService {
     }
 
     public StockCompositionDashboardResponse getStockComposition(String range, String warehouseCode, String categoryCode) {
-        return buildStockComposition(warehouseCode);
+        return buildStockComposition(warehouseCode, categoryCode);
     }
 
     public TopBinsDashboardResponse getTopBins(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildTopBins(warehouseCode, limit);
+        MetricRange.parse(range);
+        return buildTopBins(warehouseCode, categoryCode, limit);
     }
 
     public BinHeatmapDashboardResponse getBinHeatmap(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildBinHeatmap(warehouseCode);
+        MetricRange.parse(range);
+        validateLimit(limit);
+        return buildBinHeatmap(warehouseCode, categoryCode);
     }
 
     public LowStockTableDashboardResponse getLowStock(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildLowStockTable(warehouseCode, limit);
+        MetricRange.parse(range);
+        return buildLowStockTable(warehouseCode, categoryCode, limit);
     }
 
     public LineChartDashboardResponse getInventoryValueLine(String range, String warehouseCode, String categoryCode) {

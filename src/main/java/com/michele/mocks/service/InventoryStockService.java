@@ -9,6 +9,7 @@ import com.michele.mocks.exception.ResourceNotFoundException;
 import com.michele.mocks.repository.InventoryStockRepository;
 import com.michele.mocks.repository.StorageBinRepository;
 import com.michele.mocks.repository.WarehouseRepository;
+import com.michele.mocks.repository.CategoryRepository;
 import com.michele.mocks.util.DashboardFormatters;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -28,38 +29,56 @@ public class InventoryStockService {
     private final InventoryStockRepository inventoryStockRepository;
     private final StorageBinRepository storageBinRepository;
     private final WarehouseRepository warehouseRepository;
+    private final CategoryRepository categoryRepository;
 
-    public List<LowStockRowResponse> getLowStockTableRows(int limit) {
+    public List<LowStockRowResponse> getLowStockTableRows(int limit, String warehouseCode, String categoryCode) {
         int size = limit > 0 ? limit : 10;
-        return inventoryStockRepository.findLowStockByUrgency(PageRequest.of(0, size))
+        if (isUnknownWarehouse(warehouseCode) || isUnknownCategory(categoryCode)) {
+            return List.of();
+        }
+        return inventoryStockRepository.findLowStockByUrgencyFiltered(normalizeCode(warehouseCode), normalizeCode(categoryCode), PageRequest.of(0, size))
                 .stream()
                 .map(this::toLowStockRow)
                 .toList();
     }
 
-    public List<DashboardDataPointResponse> getTopBinsData(int limit) {
+    public List<DashboardDataPointResponse> getTopBinsData(int limit, String warehouseCode, String categoryCode) {
         int size = limit > 0 ? limit : 10;
-        return storageBinRepository.findTopByUtilization(PageRequest.of(0, size))
+        if (isUnknownWarehouse(warehouseCode) || isUnknownCategory(categoryCode)) {
+            return List.of();
+        }
+        return storageBinRepository.findTopByUtilizationFiltered(normalizeCode(warehouseCode), normalizeCode(categoryCode), PageRequest.of(0, size))
                 .stream()
                 .map(this::toTopBinDataPoint)
                 .toList();
     }
 
-    public List<DashboardDataPointResponse> getBinHeatmapData(String warehouseCode) {
-        List<StorageBin> bins = warehouseCode == null || warehouseCode.isBlank()
+    public List<DashboardDataPointResponse> getBinHeatmapData(String warehouseCode, String categoryCode) {
+        if (isUnknownWarehouse(warehouseCode) || isUnknownCategory(categoryCode)) {
+            return List.of();
+        }
+        List<StorageBin> bins = normalizeCode(warehouseCode) == null
                 ? storageBinRepository.findAll()
-                : storageBinRepository.findByWarehouseCodeIgnoreCase(warehouseCode.trim());
+                : storageBinRepository.findByWarehouseCodeIgnoreCase(normalizeCode(warehouseCode));
+
+        if (normalizeCode(categoryCode) != null) {
+            bins = bins.stream()
+                    .filter(bin -> bin.getStocks() != null && bin.getStocks().stream().anyMatch(stock -> stock.getProduct().getCategory() != null && categoryCode.equalsIgnoreCase(stock.getProduct().getCategory().getCode())))
+                    .toList();
+        }
 
         return bins.stream()
                 .map(this::toHeatmapDataPoint)
                 .toList();
     }
 
-    public List<DashboardDataPointResponse> getStockCompositionData(String warehouseCode) {
-        List<InventoryStock> stockList = warehouseCode == null || warehouseCode.isBlank()
-                ? inventoryStockRepository.findAll()
-                : inventoryStockRepository.findAll().stream()
-                .filter(stock -> stock.getWarehouse().getCode().equalsIgnoreCase(warehouseCode.trim()))
+    public List<DashboardDataPointResponse> getStockCompositionData(String warehouseCode, String categoryCode) {
+        if (isUnknownWarehouse(warehouseCode) || isUnknownCategory(categoryCode)) {
+            return List.of(toSegment("Available", 0, 0), toSegment("Reserved", 0, 0), toSegment("Blocked", 0, 0));
+        }
+        List<InventoryStock> stockList = inventoryStockRepository.findAll().stream()
+                .filter(stock -> normalizeCode(warehouseCode) == null || stock.getWarehouse().getCode().equalsIgnoreCase(warehouseCode.trim()))
+                .filter(stock -> normalizeCode(categoryCode) == null || (stock.getProduct().getCategory() != null && stock.getProduct().getCategory().getCode().equalsIgnoreCase(categoryCode.trim())))
                 .toList();
 
         long available = sumSafe(stockList, InventoryStock::getQuantityAvailable);
@@ -170,5 +189,19 @@ public class InventoryStockService {
                 .filter(Objects::nonNull)
                 .mapToLong(Integer::longValue)
                 .sum();
+    }
+
+    private String normalizeCode(String code) {
+        return code == null || code.isBlank() ? null : code.trim();
+    }
+
+    private boolean isUnknownWarehouse(String warehouseCode) {
+        String normalized = normalizeCode(warehouseCode);
+        return normalized != null && warehouseRepository.findByCodeIgnoreCase(normalized).isEmpty();
+    }
+
+    private boolean isUnknownCategory(String categoryCode) {
+        String normalized = normalizeCode(categoryCode);
+        return normalized != null && categoryRepository.findByCodeIgnoreCase(normalized).isEmpty();
     }
 }
