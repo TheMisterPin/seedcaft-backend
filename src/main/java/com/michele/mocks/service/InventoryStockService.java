@@ -1,6 +1,7 @@
 package com.michele.mocks.service;
 
 import com.michele.mocks.dto.inventory.dashboard.DashboardDataPointResponse;
+import com.michele.mocks.dto.inventory.dashboard.LowStockRowResponse;
 import com.michele.mocks.entity.InventoryStock;
 import com.michele.mocks.entity.StorageBin;
 import com.michele.mocks.entity.Warehouse;
@@ -28,11 +29,11 @@ public class InventoryStockService {
     private final StorageBinRepository storageBinRepository;
     private final WarehouseRepository warehouseRepository;
 
-    public List<DashboardDataPointResponse> getLowStockTableRows(int limit) {
+    public List<LowStockRowResponse> getLowStockTableRows(int limit) {
         int size = limit > 0 ? limit : 10;
         return inventoryStockRepository.findLowStockByUrgency(PageRequest.of(0, size))
                 .stream()
-                .map(this::toLowStockDataPoint)
+                .map(this::toLowStockRow)
                 .toList();
     }
 
@@ -78,19 +79,18 @@ public class InventoryStockService {
                 .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found: " + warehouseCode));
     }
 
-    private DashboardDataPointResponse toLowStockDataPoint(InventoryStock stock) {
-        String label = stock.getProduct().getName() + " @ " + stock.getWarehouse().getCode();
-        return new DashboardDataPointResponse(
-                label,
-                BigDecimal.valueOf(stock.getQuantityAvailable()),
-                DashboardFormatters.formatInteger(stock.getQuantityAvailable()) + " units",
-                null,
-                BigDecimal.valueOf(stock.getReorderPoint() - stock.getQuantityAvailable()),
-                stock.getQuantityAvailable() <= 0 ? "down" : "flat",
-                null,
-                null,
-                null,
-                null
+    private LowStockRowResponse toLowStockRow(InventoryStock stock) {
+        String categoryName = stock.getProduct().getCategory() == null
+                ? "Uncategorized"
+                : stock.getProduct().getCategory().getName();
+        return new LowStockRowResponse(
+                stock.getProduct().getSku(),
+                stock.getProduct().getName(),
+                categoryName,
+                stock.getWarehouse().getCode(),
+                stock.getQuantityAvailable(),
+                stock.getReorderPoint(),
+                stock.getStockStatus().name()
         );
     }
 

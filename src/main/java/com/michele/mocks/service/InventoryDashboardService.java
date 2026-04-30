@@ -28,9 +28,13 @@ public class InventoryDashboardService {
         int resolvedLimit = validateLimit(limit);
         DashboardMetaResponse meta = buildMeta("Low Stock", DashboardType.TABLE, "Items that are below reorder threshold.", null, scopeCode, null, resolvedLimit);
         List<TableColumnResponse> columns = List.of(
-                new TableColumnResponse("label", "Item"),
-                new TableColumnResponse("value", "Available"),
-                new TableColumnResponse("trendValue", "Reorder Gap")
+                new TableColumnResponse("sku", "sku"),
+                new TableColumnResponse("productName", "productName"),
+                new TableColumnResponse("categoryName", "categoryName"),
+                new TableColumnResponse("warehouseCode", "warehouseCode"),
+                new TableColumnResponse("availableUnits", "availableUnits"),
+                new TableColumnResponse("reorderPoint", "reorderPoint"),
+                new TableColumnResponse("status", "status")
         );
         return new LowStockTableDashboardResponse(meta, columns, inventoryStockService.getLowStockTableRows(resolvedLimit));
     }
