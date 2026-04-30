@@ -13,7 +13,10 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
             select s
             from InventoryStock s
             where s.quantityAvailable <= s.reorderPoint
-            order by (s.reorderPoint - s.quantityAvailable) desc, s.quantityAvailable asc
+            order by
+                case when s.quantityAvailable <= 0 then 0 else 1 end asc,
+                case when s.reorderPoint <= 0 then 999999999.0 else (1.0 * s.quantityAvailable / s.reorderPoint) end asc,
+                s.quantityAvailable asc
             """)
     List<InventoryStock> findLowStockByUrgency(Pageable pageable);
 }

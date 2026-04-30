@@ -9,5 +9,5 @@ import java.util.List;
 public record LowStockTableDashboardResponse(
         @NotNull @Valid DashboardMetaResponse meta,
         @NotEmpty List<@Valid TableColumnResponse> columns,
-        @NotEmpty List<@Valid DashboardDataPointResponse> data) {
+        @NotEmpty List<@Valid LowStockRowResponse> data) {
 }
