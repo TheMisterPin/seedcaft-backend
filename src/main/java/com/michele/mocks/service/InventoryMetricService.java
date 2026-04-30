@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 import com.michele.mocks.util.MetricRange;
 
@@ -73,19 +74,31 @@ public class InventoryMetricService {
         if (latestValue == null) {
             return BigDecimal.ZERO;
         }
+        return calculateTrendPercentage(rangeSnapshots, BigDecimal.valueOf(latestValue), snapshot ->
+                snapshot.getTotalUnits() == null ? null : BigDecimal.valueOf(snapshot.getTotalUnits()));
+    }
 
-        Long baseline = rangeSnapshots.stream()
-                .min(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
-                .map(InventoryMetricSnapshot::getTotalUnits)
-                .orElse(null);
-
-        if (baseline == null || baseline == 0L) {
+    public BigDecimal calculateTrendPercentage(
+            List<InventoryMetricSnapshot> rangeSnapshots,
+            BigDecimal latestValue,
+            Function<InventoryMetricSnapshot, BigDecimal> baselineExtractor
+    ) {
+        if (latestValue == null || baselineExtractor == null || rangeSnapshots == null || rangeSnapshots.isEmpty()) {
             return BigDecimal.ZERO;
         }
 
-        return BigDecimal.valueOf(latestValue - baseline)
+        BigDecimal baseline = rangeSnapshots.stream()
+                .min(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
+                .map(baselineExtractor)
+                .orElse(null);
+
+        if (baseline == null || BigDecimal.ZERO.compareTo(baseline) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return latestValue.subtract(baseline)
                 .multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(baseline), 2, RoundingMode.HALF_UP);
+                .divide(baseline, 2, RoundingMode.HALF_UP);
     }
 
     public BigDecimal calculateTrendPercentage(
