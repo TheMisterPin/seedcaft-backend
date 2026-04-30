@@ -66,28 +66,39 @@ public class InventoryDashboardService {
 
     public KpiDashboardResponse buildKpis(String range, String scopeCode) {
         MetricRange metricRange = MetricRange.parse(range);
+        MetricScopeType scopeType = scopeCode == null || scopeCode.isBlank()
+                ? MetricScopeType.GLOBAL
+                : MetricScopeType.WAREHOUSE;
+        var latest = inventoryMetricService.findLatestSnapshot(scopeType, scopeCode).orElse(null);
+        var rangeSnapshots = inventoryMetricService.findSnapshotsInRange(scopeType, scopeCode, metricRange.code());
 
-        var latest = inventoryMetricService.findLatestSnapshot(MetricScopeType.WAREHOUSE, scopeCode).orElse(null);
-        long latestUnits = latest == null || latest.getTotalUnits() == null ? 0L : latest.getTotalUnits();
-        var rangeSnapshots = inventoryMetricService.findSnapshotsInRange(MetricScopeType.WAREHOUSE, scopeCode, metricRange.code());
-
-        BigDecimal trend = inventoryMetricService.calculateTrendPercentage(rangeSnapshots, latestUnits);
-
-        DashboardDataPointResponse totalUnits = new DashboardDataPointResponse(
-                "Total Units",
-                BigDecimal.valueOf(latestUnits),
-                DashboardFormatters.formatInteger(latestUnits) + " units",
-                null,
-                trend,
-                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
-                null,
-                null,
-                null,
-                null
+        DashboardDataPointResponse totalUnits = buildKpiDataPoint(
+                "totalUnits", latest == null ? null : latest.getTotalUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getTotalUnits() == null ? null : BigDecimal.valueOf(snapshot.getTotalUnits())
+        );
+        DashboardDataPointResponse availableUnits = buildKpiDataPoint(
+                "availableUnits", latest == null ? null : latest.getAvailableUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getAvailableUnits() == null ? null : BigDecimal.valueOf(snapshot.getAvailableUnits())
+        );
+        DashboardDataPointResponse reservedUnits = buildKpiDataPoint(
+                "reservedUnits", latest == null ? null : latest.getReservedUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getReservedUnits() == null ? null : BigDecimal.valueOf(snapshot.getReservedUnits())
+        );
+        DashboardDataPointResponse blockedUnits = buildKpiDataPoint(
+                "blockedUnits", latest == null ? null : latest.getBlockedUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getBlockedUnits() == null ? null : BigDecimal.valueOf(snapshot.getBlockedUnits())
+        );
+        DashboardDataPointResponse fillPercentage = buildKpiDataPoint(
+                "fillPercentage", latest == null ? null : latest.getFillPercentage(), "%", rangeSnapshots, InventoryMetricSnapshot::getFillPercentage
+        );
+        DashboardDataPointResponse inventoryValue = buildKpiDataPoint(
+                "inventoryValue", latest == null ? null : latest.getInventoryValue(), "currency", rangeSnapshots, InventoryMetricSnapshot::getInventoryValue
         );
 
         DashboardMetaResponse meta = buildMeta("Inventory KPI (" + metricRange.code() + ")", DashboardType.KPI, "KPI summary for the selected time range.", metricRange.code(), scopeCode, null, null);
-        return new KpiDashboardResponse(meta, List.of(totalUnits));
+        return new KpiDashboardResponse(meta, List.of(
+                totalUnits, availableUnits, reservedUnits, blockedUnits, fillPercentage, inventoryValue
+        ));
     }
 
     public InventoryDashboardResponse buildFullDashboard(String range, Integer limit, String scopeCode) {
@@ -138,6 +149,7 @@ public class InventoryDashboardService {
                         snapshot.getScopeName(),
                         snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
                         DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
+                        "currency",
                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
                         null,
                         null,
@@ -180,6 +192,7 @@ public class InventoryDashboardService {
                                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
                                         DashboardFormatters.formatPercentage(snapshot.getFillPercentage()),
+                                        "%",
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
                                         null,
                                         null,
@@ -240,6 +253,7 @@ public class InventoryDashboardService {
                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                         snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
                         DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
+                        "currency",
                         null,
                         null,
                         null,
@@ -263,6 +277,35 @@ public class InventoryDashboardService {
                 "date",
                 "inventoryValue",
                 List.of(new LineChartSeriesResponse(seriesName, points))
+        );
+    }
+
+    private DashboardDataPointResponse buildKpiDataPoint(
+            String label,
+            Number numericValue,
+            String unit,
+            List<InventoryMetricSnapshot> rangeSnapshots,
+            java.util.function.Function<InventoryMetricSnapshot, BigDecimal> trendBaselineExtractor
+    ) {
+        BigDecimal value = numericValue == null ? BigDecimal.ZERO : BigDecimal.valueOf(numericValue.doubleValue());
+        BigDecimal trend = inventoryMetricService.calculateTrendPercentage(rangeSnapshots, value, trendBaselineExtractor);
+        String formattedValue = switch (label) {
+            case "fillPercentage" -> DashboardFormatters.formatPercentage(value);
+            case "inventoryValue" -> DashboardFormatters.formatCurrency(value);
+            default -> DashboardFormatters.formatInteger(value.longValue()) + " units";
+        };
+        return new DashboardDataPointResponse(
+                label,
+                value,
+                formattedValue,
+                unit,
+                null,
+                trend,
+                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
+                null,
+                null,
+                null,
+                null
         );
     }
 
