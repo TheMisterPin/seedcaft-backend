@@ -140,25 +140,32 @@ public class InventoryDashboardService {
 
     public CategoryDonutDashboardResponse getCategoryDonut(String range, String warehouseCode, String categoryCode) {
         MetricRange metricRange = MetricRange.parse(range);
-        List<DashboardDataPointResponse> data = inventoryMetricService
+        Map<String, InventoryMetricSnapshot> latestCategorySnapshots = inventoryMetricService
                 .findSnapshotsInRange(MetricScopeType.CATEGORY, null, metricRange.code())
                 .stream()
                 .collect(Collectors.toMap(
                         snapshot -> snapshot.getScopeCode().toUpperCase(),
                         snapshot -> snapshot,
                         (left, right) -> left.getSnapshotDate().isAfter(right.getSnapshotDate()) ? left : right
-                ))
-                .values()
-                .stream()
-                .sorted(Comparator.comparing((InventoryMetricSnapshot s) -> s.getInventoryValue(), Comparator.nullsLast(BigDecimal::compareTo)).reversed())
-                .toList()
-                .stream()
+                ));
+
+        BigDecimal totalAvailableUnits = latestCategorySnapshots.values().stream()
+                .map(snapshot -> snapshot.getAvailableUnits() == null
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(snapshot.getAvailableUnits()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<DashboardDataPointResponse> data = latestCategorySnapshots.values().stream()
                 .map(snapshot -> new DashboardDataPointResponse(
                         snapshot.getScopeName(),
-                        snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
-                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
-                        "currency",
-                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                        snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()),
+                        DashboardFormatters.formatInteger(snapshot.getAvailableUnits() == null ? 0L : snapshot.getAvailableUnits()) + " units",
+                        "units",
+                        totalAvailableUnits.signum() == 0
+                                ? BigDecimal.ZERO
+                                : (snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()))
+                                .divide(totalAvailableUnits, 4, java.math.RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100)),
                         null,
                         null,
                         null,
@@ -166,15 +173,16 @@ public class InventoryDashboardService {
                         null,
                         null
                 ))
+                .sorted(Comparator.comparing(DashboardDataPointResponse::value, Comparator.nullsLast(BigDecimal::compareTo)).reversed())
                 .toList();
 
         DashboardMetaResponse meta = buildMeta(
-                "Category Donut (" + metricRange.code() + ")",
+                "Available Items by Category (" + metricRange.code() + ")",
                 DashboardType.DONUT,
-                "Inventory value distribution by category.",
+                "Available item distribution by category.",
                 metricRange.code(),
                 warehouseCode,
-                categoryCode,
+                null,
                 null
         );
         return new CategoryDonutDashboardResponse(meta, data);
