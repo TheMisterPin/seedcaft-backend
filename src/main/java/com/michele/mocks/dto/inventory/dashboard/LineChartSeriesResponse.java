@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record LineChartSeriesResponse(
-        @NotBlank @Size(max = 128) String name,
-        List<@Valid DashboardDataPointResponse> data) {
+        @NotBlank @Size(max = 128) String key,
+        @NotBlank @Size(max = 128) String label,
+        @NotBlank @Size(max = 32) String unit,
+        List<@Valid LineChartDataPointResponse> data) {
 }
