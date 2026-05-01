@@ -133,7 +133,8 @@ public class InventoryStockService {
                 null,
                 BigDecimal.valueOf(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0)),
                 DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0))
-                        + "/" + DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getMaxStorageUnits(), 0)),
+                        + " / " + DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getMaxStorageUnits(), 0))
+                        + " units",
                 bin.getWarehouse().getCode(),
                 bin.getWarehouse().getName()
         );

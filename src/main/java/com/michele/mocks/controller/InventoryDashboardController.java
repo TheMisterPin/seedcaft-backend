@@ -138,15 +138,13 @@ public class InventoryDashboardController {
     })
     @GetMapping("/top-bins")
     public TopBinsDashboardResponse getTopBins(
-            @Parameter(description = "Time range window for top-bin ranking", schema = @Schema(defaultValue = "30d", allowableValues = {"7d", "30d", "90d"}))
-            @RequestParam(defaultValue = "30d") String range,
             @Parameter(description = "Optional warehouse filter (warehouse code)")
             @RequestParam(required = false) String warehouseCode,
             @Parameter(description = "Optional category filter (category code)")
             @RequestParam(required = false) String categoryCode,
             @Parameter(description = "Maximum number of bins returned", schema = @Schema(defaultValue = "10"))
             @RequestParam(defaultValue = "10") Integer limit) {
-        return service.getTopBins(range, warehouseCode, categoryCode, limit);
+        return service.getTopBins(null, warehouseCode, categoryCode, limit);
     }
 
     @Operation(
@@ -159,15 +157,13 @@ public class InventoryDashboardController {
     })
     @GetMapping("/bin-heatmap")
     public BinHeatmapDashboardResponse getBinHeatmap(
-            @Parameter(description = "Time range window for heatmap", schema = @Schema(defaultValue = "30d", allowableValues = {"7d", "30d", "90d"}))
-            @RequestParam(defaultValue = "30d") String range,
             @Parameter(description = "Optional warehouse filter (warehouse code)")
             @RequestParam(required = false) String warehouseCode,
             @Parameter(description = "Optional category filter (category code)")
             @RequestParam(required = false) String categoryCode,
             @Parameter(description = "Maximum number of bins/cells returned", schema = @Schema(defaultValue = "10"))
             @RequestParam(defaultValue = "10") Integer limit) {
-        return service.getBinHeatmap(range, warehouseCode, categoryCode, limit);
+        return service.getBinHeatmap(null, warehouseCode, categoryCode, limit);
     }
 
     @Operation(
@@ -180,15 +176,13 @@ public class InventoryDashboardController {
     })
     @GetMapping("/low-stock")
     public LowStockTableDashboardResponse getLowStock(
-            @Parameter(description = "Time range window for low-stock detection", schema = @Schema(defaultValue = "30d", allowableValues = {"7d", "30d", "90d"}))
-            @RequestParam(defaultValue = "30d") String range,
             @Parameter(description = "Optional warehouse filter (warehouse code)")
             @RequestParam(required = false) String warehouseCode,
             @Parameter(description = "Optional category filter (category code)")
             @RequestParam(required = false) String categoryCode,
             @Parameter(description = "Maximum number of table rows returned", schema = @Schema(defaultValue = "10"))
             @RequestParam(defaultValue = "10") Integer limit) {
-        return service.getLowStock(range, warehouseCode, categoryCode, limit);
+        return service.getLowStock(null, warehouseCode, categoryCode, limit);
     }
 
     @Operation(
