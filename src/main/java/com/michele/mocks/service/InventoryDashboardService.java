@@ -188,20 +188,14 @@ public class InventoryDashboardService {
                 .stream()
                 .map(entry -> new LineChartSeriesResponse(
                         entry.getKey(),
+                        entry.getKey(),
+                        "%",
                         entry.getValue().stream()
                                 .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
-                                .map(snapshot -> new DashboardDataPointResponse(
+                                .map(snapshot -> new LineChartDataPointResponse(
                                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
-                                        DashboardFormatters.formatPercentage(snapshot.getFillPercentage()),
-                                        "%",
-                                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null
+                                        DashboardFormatters.formatPercentage(snapshot.getFillPercentage())
                                 ))
                                 .toList()
                 ))
@@ -253,19 +247,12 @@ public class InventoryDashboardService {
                 .map(snapshot -> snapshot.getScopeName() == null ? snapshot.getScopeCode() : snapshot.getScopeName())
                 .orElse(scopeType == MetricScopeType.GLOBAL ? "Global" : warehouseCode);
 
-        List<DashboardDataPointResponse> points = snapshots.stream()
+        List<LineChartDataPointResponse> points = snapshots.stream()
                 .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
-                .map(snapshot -> new DashboardDataPointResponse(
+                .map(snapshot -> new LineChartDataPointResponse(
                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                         snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
-                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
-                        "currency",
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
+                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue())
                 ))
                 .toList();
 
@@ -282,7 +269,7 @@ public class InventoryDashboardService {
                 meta,
                 "date",
                 "inventoryValue",
-                List.of(new LineChartSeriesResponse(seriesName, points))
+                List.of(new LineChartSeriesResponse(seriesName, seriesName, "currency", points))
         );
     }
 
