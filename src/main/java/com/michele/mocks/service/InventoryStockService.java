@@ -130,6 +130,7 @@ public class InventoryStockService {
                 null,
                 null,
                 null,
+                null,
                 BigDecimal.valueOf(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0)),
                 DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0))
                         + "/" + DashboardFormatters.formatInteger(Objects.requireNonNullElse(bin.getMaxStorageUnits(), 0)),
@@ -149,10 +150,11 @@ public class InventoryStockService {
         String label = bin.getWarehouse().getCode() + ":" + bin.getCode();
         return new DashboardDataPointResponse(
                 label,
-                BigDecimal.valueOf(Objects.requireNonNullElse(bin.getCurrentStorageUnits(), 0)),
-                DashboardFormatters.formatPercentage(utilization),
-                "units",
                 utilization,
+                DashboardFormatters.formatPercentage(utilization),
+                "%",
+                toHeatmapStatus(utilization),
+                null,
                 null,
                 null,
                 null,
@@ -173,6 +175,7 @@ public class InventoryStockService {
                 BigDecimal.valueOf(value),
                 DashboardFormatters.formatInteger(value) + " units",
                 "units",
+                null,
                 percentage,
                 null,
                 null,
@@ -181,6 +184,25 @@ public class InventoryStockService {
                 null,
                 null
         );
+    }
+
+    private String toHeatmapStatus(BigDecimal utilization) {
+        if (utilization.compareTo(BigDecimal.ZERO) == 0) {
+            return "empty";
+        }
+        if (utilization.compareTo(BigDecimal.valueOf(30)) <= 0) {
+            return "low";
+        }
+        if (utilization.compareTo(BigDecimal.valueOf(75)) <= 0) {
+            return "normal";
+        }
+        if (utilization.compareTo(BigDecimal.valueOf(90)) <= 0) {
+            return "high";
+        }
+        if (utilization.compareTo(BigDecimal.valueOf(99)) <= 0) {
+            return "critical";
+        }
+        return "full";
     }
 
     private long sumSafe(List<InventoryStock> stockList, java.util.function.Function<InventoryStock, Integer> extractor) {
