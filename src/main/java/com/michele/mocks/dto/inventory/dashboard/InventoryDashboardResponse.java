@@ -7,6 +7,6 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.Map;
 
 public record InventoryDashboardResponse(
-        @NotNull @NotEmpty Map<String, @Valid Object> meta,
+        @NotNull @Valid DashboardMetaResponse meta,
         @NotEmpty Map<String, @Valid Object> sections) {
 }

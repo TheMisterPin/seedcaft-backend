@@ -105,9 +105,15 @@ public class InventoryDashboardService {
         MetricRange metricRange = MetricRange.parse(range);
         int resolvedLimit = validateLimit(limit);
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("range", metricRange.code());
-        meta.put("limit", resolvedLimit);
+        DashboardMetaResponse meta = buildMeta(
+                "Inventory Dashboard",
+                DashboardType.DASHBOARD,
+                "Comprehensive inventory dashboard for the selected scope and range.",
+                metricRange.code(),
+                scopeCode,
+                null,
+                resolvedLimit
+        );
 
         Map<String, Object> sections = new LinkedHashMap<>();
         sections.put("kpis", buildKpis(metricRange.code(), scopeCode));
