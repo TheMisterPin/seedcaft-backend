@@ -24,34 +24,34 @@ public class InventoryDashboardService {
     private final InventoryMetricService inventoryMetricService;
     private final InventoryStockService inventoryStockService;
 
-    public LowStockTableDashboardResponse buildLowStockTable(String scopeCode, Integer limit) {
+    public LowStockTableDashboardResponse buildLowStockTable(String scopeCode, String categoryCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
         DashboardMetaResponse meta = buildMeta("Low Stock", DashboardType.TABLE, "Items that are below reorder threshold.", null, scopeCode, null, resolvedLimit);
         List<TableColumnResponse> columns = List.of(
-                new TableColumnResponse("sku", "sku"),
-                new TableColumnResponse("productName", "productName"),
-                new TableColumnResponse("categoryName", "categoryName"),
-                new TableColumnResponse("warehouseCode", "warehouseCode"),
-                new TableColumnResponse("availableUnits", "availableUnits"),
-                new TableColumnResponse("reorderPoint", "reorderPoint"),
-                new TableColumnResponse("status", "status")
+                new TableColumnResponse("sku", "SKU"),
+                new TableColumnResponse("productName", "Product"),
+                new TableColumnResponse("categoryName", "Category"),
+                new TableColumnResponse("warehouseCode", "Warehouse"),
+                new TableColumnResponse("availableUnits", "Available"),
+                new TableColumnResponse("reorderPoint", "Reorder Point"),
+                new TableColumnResponse("status", "Status")
         );
-        return new LowStockTableDashboardResponse(meta, columns, inventoryStockService.getLowStockTableRows(resolvedLimit));
+        return new LowStockTableDashboardResponse(meta, columns, inventoryStockService.getLowStockTableRows(resolvedLimit, scopeCode, categoryCode));
     }
 
-    public TopBinsDashboardResponse buildTopBins(String scopeCode, Integer limit) {
+    public TopBinsDashboardResponse buildTopBins(String scopeCode, String categoryCode, Integer limit) {
         int resolvedLimit = validateLimit(limit);
         DashboardMetaResponse meta = buildMeta("Top Bins", DashboardType.BAR, "Bins with the highest utilization.", null, scopeCode, null, resolvedLimit);
-        return new TopBinsDashboardResponse(meta, inventoryStockService.getTopBinsData(resolvedLimit));
+        return new TopBinsDashboardResponse(meta, inventoryStockService.getTopBinsData(resolvedLimit, scopeCode, categoryCode));
     }
 
-    public BinHeatmapDashboardResponse buildBinHeatmap(String scopeCode) {
+    public BinHeatmapDashboardResponse buildBinHeatmap(String scopeCode, String categoryCode) {
         DashboardMetaResponse meta = buildMeta("Bin Utilization Heatmap", DashboardType.HEATMAP, "Utilization distribution across warehouse bins.", null, scopeCode, null, null);
-        return new BinHeatmapDashboardResponse(meta, inventoryStockService.getBinHeatmapData(scopeCode));
+        return new BinHeatmapDashboardResponse(meta, inventoryStockService.getBinHeatmapData(scopeCode, categoryCode));
     }
 
-    public StockCompositionDashboardResponse buildStockComposition(String scopeCode) {
-        List<DashboardDataPointResponse> segments = inventoryStockService.getStockCompositionData(scopeCode);
+    public StockCompositionDashboardResponse buildStockComposition(String scopeCode, String categoryCode) {
+        List<DashboardDataPointResponse> segments = inventoryStockService.getStockCompositionData(scopeCode, categoryCode);
         BigDecimal totalValue = segments.stream()
                 .map(DashboardDataPointResponse::value)
                 .filter(v -> v != null)
@@ -66,53 +66,72 @@ public class InventoryDashboardService {
 
     public KpiDashboardResponse buildKpis(String range, String scopeCode) {
         MetricRange metricRange = MetricRange.parse(range);
+        MetricScopeType scopeType = scopeCode == null || scopeCode.isBlank()
+                ? MetricScopeType.GLOBAL
+                : MetricScopeType.WAREHOUSE;
+        var latest = inventoryMetricService.findLatestSnapshot(scopeType, scopeCode).orElse(null);
+        var rangeSnapshots = inventoryMetricService.findSnapshotsInRange(scopeType, scopeCode, metricRange.code());
 
-        var latest = inventoryMetricService.findLatestSnapshot(MetricScopeType.WAREHOUSE, scopeCode).orElse(null);
-        long latestUnits = latest == null || latest.getTotalUnits() == null ? 0L : latest.getTotalUnits();
-        var rangeSnapshots = inventoryMetricService.findSnapshotsInRange(MetricScopeType.WAREHOUSE, scopeCode, metricRange.code());
-
-        BigDecimal trend = inventoryMetricService.calculateTrendPercentage(rangeSnapshots, latestUnits);
-
-        DashboardDataPointResponse totalUnits = new DashboardDataPointResponse(
-                "Total Units",
-                BigDecimal.valueOf(latestUnits),
-                DashboardFormatters.formatInteger(latestUnits) + " units",
-                null,
-                trend,
-                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
-                null,
-                null,
-                null,
-                null
+        DashboardDataPointResponse totalUnits = buildKpiDataPoint(
+                "totalUnits", latest == null ? null : latest.getTotalUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getTotalUnits() == null ? null : BigDecimal.valueOf(snapshot.getTotalUnits())
+        );
+        DashboardDataPointResponse availableUnits = buildKpiDataPoint(
+                "availableUnits", latest == null ? null : latest.getAvailableUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getAvailableUnits() == null ? null : BigDecimal.valueOf(snapshot.getAvailableUnits())
+        );
+        DashboardDataPointResponse reservedUnits = buildKpiDataPoint(
+                "reservedUnits", latest == null ? null : latest.getReservedUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getReservedUnits() == null ? null : BigDecimal.valueOf(snapshot.getReservedUnits())
+        );
+        DashboardDataPointResponse blockedUnits = buildKpiDataPoint(
+                "blockedUnits", latest == null ? null : latest.getBlockedUnits(), "units", rangeSnapshots,
+                snapshot -> snapshot.getBlockedUnits() == null ? null : BigDecimal.valueOf(snapshot.getBlockedUnits())
+        );
+        DashboardDataPointResponse fillPercentage = buildKpiDataPoint(
+                "fillPercentage", latest == null ? null : latest.getFillPercentage(), "%", rangeSnapshots, InventoryMetricSnapshot::getFillPercentage
+        );
+        DashboardDataPointResponse inventoryValue = buildKpiDataPoint(
+                "inventoryValue", latest == null ? null : latest.getInventoryValue(), "currency", rangeSnapshots, InventoryMetricSnapshot::getInventoryValue
         );
 
         DashboardMetaResponse meta = buildMeta("Inventory KPI (" + metricRange.code() + ")", DashboardType.KPI, "KPI summary for the selected time range.", metricRange.code(), scopeCode, null, null);
-        return new KpiDashboardResponse(meta, List.of(totalUnits));
+        return new KpiDashboardResponse(meta, List.of(
+                totalUnits, availableUnits, reservedUnits, blockedUnits, fillPercentage, inventoryValue
+        ));
     }
 
-    public InventoryDashboardResponse buildFullDashboard(String range, Integer limit, String scopeCode) {
+    public InventoryDashboardResponse buildFullDashboard(String range, Integer limit, String scopeCode, String categoryCode) {
         MetricRange metricRange = MetricRange.parse(range);
         int resolvedLimit = validateLimit(limit);
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("range", metricRange.code());
-        meta.put("limit", resolvedLimit);
+        DashboardMetaResponse meta = buildMeta(
+                "Inventory Dashboard",
+                DashboardType.DASHBOARD,
+                "Comprehensive inventory dashboard for the selected scope and range.",
+                metricRange.code(),
+                scopeCode,
+                categoryCode,
+                resolvedLimit
+        );
 
         Map<String, Object> sections = new LinkedHashMap<>();
         sections.put("kpis", buildKpis(metricRange.code(), scopeCode));
-        sections.put("categoryDonut", getCategoryDonut(metricRange.code(), scopeCode, null));
-        sections.put("warehouseFillLine", getWarehouseFillLine(metricRange.code(), scopeCode, null));
-        sections.put("stockComposition", getStockComposition(metricRange.code(), scopeCode, null));
-        sections.put("topBins", getTopBins(metricRange.code(), scopeCode, null, resolvedLimit));
-        sections.put("binHeatmap", getBinHeatmap(metricRange.code(), scopeCode, null, resolvedLimit));
-        sections.put("lowStock", getLowStock(metricRange.code(), scopeCode, null, resolvedLimit));
-        sections.put("inventoryValueLine", getInventoryValueLine(metricRange.code(), scopeCode, null));
+        sections.put("categoryDonut", getCategoryDonut(metricRange.code(), scopeCode, categoryCode));
+        sections.put("warehouseFillLine", getWarehouseFillLine(metricRange.code(), scopeCode, categoryCode));
+        sections.put("stockComposition", getStockComposition(metricRange.code(), scopeCode, categoryCode));
+        sections.put("topBins", getTopBins(metricRange.code(), scopeCode, categoryCode, resolvedLimit));
+        sections.put("binHeatmap", getBinHeatmap(metricRange.code(), scopeCode, categoryCode, resolvedLimit));
+        sections.put("lowStock", getLowStock(metricRange.code(), scopeCode, categoryCode, resolvedLimit));
+        sections.put("inventoryValueLine", getInventoryValueLine(metricRange.code(), scopeCode, categoryCode));
 
         return new InventoryDashboardResponse(meta, sections);
     }
 
     public InventoryDashboardResponse getDashboard(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildFullDashboard(range, limit, warehouseCode);
+        MetricRange.parse(range);
+        validateLimit(limit);
+        return buildFullDashboard(range, limit, warehouseCode, categoryCode);
     }
 
     public KpiDashboardResponse getKpis(String range, String warehouseCode, String categoryCode) {
@@ -121,24 +140,32 @@ public class InventoryDashboardService {
 
     public CategoryDonutDashboardResponse getCategoryDonut(String range, String warehouseCode, String categoryCode) {
         MetricRange metricRange = MetricRange.parse(range);
-        List<DashboardDataPointResponse> data = inventoryMetricService
+        Map<String, InventoryMetricSnapshot> latestCategorySnapshots = inventoryMetricService
                 .findSnapshotsInRange(MetricScopeType.CATEGORY, null, metricRange.code())
                 .stream()
                 .collect(Collectors.toMap(
                         snapshot -> snapshot.getScopeCode().toUpperCase(),
                         snapshot -> snapshot,
                         (left, right) -> left.getSnapshotDate().isAfter(right.getSnapshotDate()) ? left : right
-                ))
-                .values()
-                .stream()
-                .sorted(Comparator.comparing((InventoryMetricSnapshot s) -> s.getInventoryValue(), Comparator.nullsLast(BigDecimal::compareTo)).reversed())
-                .toList()
-                .stream()
+                ));
+
+        BigDecimal totalAvailableUnits = latestCategorySnapshots.values().stream()
+                .map(snapshot -> snapshot.getAvailableUnits() == null
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(snapshot.getAvailableUnits()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<DashboardDataPointResponse> data = latestCategorySnapshots.values().stream()
                 .map(snapshot -> new DashboardDataPointResponse(
                         snapshot.getScopeName(),
-                        snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
-                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
-                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
+                        snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()),
+                        DashboardFormatters.formatInteger(snapshot.getAvailableUnits() == null ? 0L : snapshot.getAvailableUnits()) + " units",
+                        "units",
+                        totalAvailableUnits.signum() == 0
+                                ? BigDecimal.ZERO
+                                : (snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()))
+                                .divide(totalAvailableUnits, 4, java.math.RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100)),
                         null,
                         null,
                         null,
@@ -146,15 +173,16 @@ public class InventoryDashboardService {
                         null,
                         null
                 ))
+                .sorted(Comparator.comparing(DashboardDataPointResponse::value, Comparator.nullsLast(BigDecimal::compareTo)).reversed())
                 .toList();
 
         DashboardMetaResponse meta = buildMeta(
-                "Category Donut (" + metricRange.code() + ")",
+                "Available Items by Category (" + metricRange.code() + ")",
                 DashboardType.DONUT,
-                "Inventory value distribution by category.",
+                "Available item distribution by category.",
                 metricRange.code(),
                 warehouseCode,
-                categoryCode,
+                null,
                 null
         );
         return new CategoryDonutDashboardResponse(meta, data);
@@ -174,19 +202,14 @@ public class InventoryDashboardService {
                 .stream()
                 .map(entry -> new LineChartSeriesResponse(
                         entry.getKey(),
+                        entry.getKey(),
+                        "%",
                         entry.getValue().stream()
                                 .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
-                                .map(snapshot -> new DashboardDataPointResponse(
+                                .map(snapshot -> new LineChartDataPointResponse(
                                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                                         snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
-                                        DashboardFormatters.formatPercentage(snapshot.getFillPercentage()),
-                                        snapshot.getFillPercentage() == null ? BigDecimal.ZERO : snapshot.getFillPercentage(),
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null
+                                        DashboardFormatters.formatPercentage(snapshot.getFillPercentage())
                                 ))
                                 .toList()
                 ))
@@ -205,19 +228,20 @@ public class InventoryDashboardService {
     }
 
     public StockCompositionDashboardResponse getStockComposition(String range, String warehouseCode, String categoryCode) {
-        return buildStockComposition(warehouseCode);
+        return buildStockComposition(warehouseCode, categoryCode);
     }
 
     public TopBinsDashboardResponse getTopBins(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildTopBins(warehouseCode, limit);
+        return buildTopBins(warehouseCode, categoryCode, limit);
     }
 
     public BinHeatmapDashboardResponse getBinHeatmap(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildBinHeatmap(warehouseCode);
+        validateLimit(limit);
+        return buildBinHeatmap(warehouseCode, categoryCode);
     }
 
     public LowStockTableDashboardResponse getLowStock(String range, String warehouseCode, String categoryCode, Integer limit) {
-        return buildLowStockTable(warehouseCode, limit);
+        return buildLowStockTable(warehouseCode, categoryCode, limit);
     }
 
     public LineChartDashboardResponse getInventoryValueLine(String range, String warehouseCode, String categoryCode) {
@@ -234,18 +258,12 @@ public class InventoryDashboardService {
                 .map(snapshot -> snapshot.getScopeName() == null ? snapshot.getScopeCode() : snapshot.getScopeName())
                 .orElse(scopeType == MetricScopeType.GLOBAL ? "Global" : warehouseCode);
 
-        List<DashboardDataPointResponse> points = snapshots.stream()
+        List<LineChartDataPointResponse> points = snapshots.stream()
                 .sorted(Comparator.comparing(InventoryMetricSnapshot::getSnapshotDate))
-                .map(snapshot -> new DashboardDataPointResponse(
+                .map(snapshot -> new LineChartDataPointResponse(
                         DashboardFormatters.formatDate(snapshot.getSnapshotDate()),
                         snapshot.getInventoryValue() == null ? BigDecimal.ZERO : snapshot.getInventoryValue(),
-                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue()),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
+                        DashboardFormatters.formatCurrency(snapshot.getInventoryValue())
                 ))
                 .toList();
 
@@ -262,7 +280,36 @@ public class InventoryDashboardService {
                 meta,
                 "date",
                 "inventoryValue",
-                List.of(new LineChartSeriesResponse(seriesName, points))
+                List.of(new LineChartSeriesResponse(seriesName, seriesName, "currency", points))
+        );
+    }
+
+    private DashboardDataPointResponse buildKpiDataPoint(
+            String label,
+            Number numericValue,
+            String unit,
+            List<InventoryMetricSnapshot> rangeSnapshots,
+            java.util.function.Function<InventoryMetricSnapshot, BigDecimal> trendBaselineExtractor
+    ) {
+        BigDecimal value = numericValue == null ? BigDecimal.ZERO : BigDecimal.valueOf(numericValue.doubleValue());
+        BigDecimal trend = inventoryMetricService.calculateTrendPercentage(rangeSnapshots, value, trendBaselineExtractor);
+        String formattedValue = switch (label) {
+            case "fillPercentage" -> DashboardFormatters.formatPercentage(value);
+            case "inventoryValue" -> DashboardFormatters.formatCurrency(value);
+            default -> DashboardFormatters.formatInteger(value.longValue()) + " units";
+        };
+        return new DashboardDataPointResponse(
+                label,
+                value,
+                formattedValue,
+                unit,
+                null,
+                trend,
+                trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
+                null,
+                null,
+                null,
+                null
         );
     }
 
