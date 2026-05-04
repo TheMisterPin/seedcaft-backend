@@ -161,6 +161,7 @@ public class InventoryDashboardService {
                         snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()),
                         DashboardFormatters.formatInteger(snapshot.getAvailableUnits() == null ? 0L : snapshot.getAvailableUnits()) + " units",
                         "units",
+                        null,
                         totalAvailableUnits.signum() == 0
                                 ? BigDecimal.ZERO
                                 : (snapshot.getAvailableUnits() == null ? BigDecimal.ZERO : BigDecimal.valueOf(snapshot.getAvailableUnits()))
@@ -305,6 +306,7 @@ public class InventoryDashboardService {
                 unit,
                 null,
                 trend,
+                null,
                 trend.signum() > 0 ? "up" : trend.signum() < 0 ? "down" : "flat",
                 null,
                 null,

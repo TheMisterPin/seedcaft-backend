@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,8 +64,17 @@ public class InventoryStockService {
                 : storageBinRepository.findByWarehouseCodeIgnoreCase(normalizeCode(warehouseCode));
 
         if (normalizeCode(categoryCode) != null) {
+            String normalizedCategory = normalizeCode(categoryCode);
+            Set<Long> binIds = bins.stream().map(StorageBin::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<Long> matchingBinIds = inventoryStockRepository.findAll().stream()
+                    .filter(stock -> stock.getBin() != null && binIds.contains(stock.getBin().getId()))
+                    .filter(stock -> stock.getProduct() != null
+                            && stock.getProduct().getCategory() != null
+                            && normalizedCategory.equalsIgnoreCase(stock.getProduct().getCategory().getCode()))
+                    .map(stock -> stock.getBin().getId())
+                    .collect(Collectors.toSet());
             bins = bins.stream()
-                    .filter(bin -> bin.getStocks() != null && bin.getStocks().stream().anyMatch(stock -> stock.getProduct().getCategory() != null && categoryCode.equalsIgnoreCase(stock.getProduct().getCategory().getCode())))
+                    .filter(bin -> matchingBinIds.contains(bin.getId()))
                     .toList();
         }
 
