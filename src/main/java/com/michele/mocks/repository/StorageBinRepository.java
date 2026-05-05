@@ -25,7 +25,7 @@ public interface StorageBinRepository extends JpaRepository<StorageBin, Long> {
     @Query("""
             select distinct b
             from StorageBin b
-            left join InventoryStock s on s.storageBin.id = b.id
+            left join InventoryStock s on s.bin.id = b.id
             left join s.product p
             left join p.category c
             where b.maxStorageUnits > 0
