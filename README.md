@@ -1,62 +1,57 @@
-# SeedCraft-Backend
+# SeedCraft Backend
 
-Spring Boot service that exposes a small REST API for **categories** and **products**, backed by PostgreSQL with Flyway migrations and OpenAPI (Swagger UI).
+SeedCraft Backend is a Spring Boot 3 service that provides:
 
-## Requirements
+- Product and category CRUD APIs.
+- Hierarchical category tree APIs.
+- Inventory-focused dashboard APIs that return frontend-ready chart/table payloads.
+- PostgreSQL persistence with Flyway migrations.
+- OpenAPI documentation via Swagger UI.
 
-- **Java 17**
-- **PostgreSQL** reachable at the URL configured in `src/main/resources/application.properties`
-- **Maven** (or use the included Maven Wrapper: `./mvnw`)
+## Tech Stack
 
-The project depends on a **Spring Boot snapshot** parent; Maven resolves it from the `spring-snapshots` repository defined in `pom.xml`.
+- Java 17
+- Spring Boot
+- Spring Data JPA
+- PostgreSQL
+- Flyway
+- SpringDoc OpenAPI
+- Maven Wrapper (`./mvnw`)
 
-## Database
+## Running Locally
 
-Create a database and user that match your settings. The app reads DB connection values from environment variables (`DB_*`, with fallback to `SPRING_DATASOURCE_*`) so credentials are not hardcoded.
+### 1) Configure database settings
 
-1. Copy the example file:
+The app reads datasource values from Spring environment variables:
 
-```bash
-cp .env.example .env
-```
+- `SPRING_DATASOURCE_URL` (default: `jdbc:postgresql://localhost:5432/mocks`)
+- `SPRING_DATASOURCE_USERNAME` (default: `mocks_admin`)
+- `SPRING_DATASOURCE_PASSWORD` (default: `password`)
 
-2. Edit `.env` with your credentials:
+Flyway migration is enabled on startup.
 
-- `DB_URL` (default: `jdbc:postgresql://localhost:5432/mocks`)
-- `DB_USERNAME` (default: `mocks_admin`)
-- `DB_PASSWORD` (default: `password`)
-
-Flyway runs on startup (`baseline-on-migrate` is enabled so existing databases can be baselined before numbered migrations).
-
-## Run
+### 2) Start the application
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Or:
+Default URL: `http://localhost:8080`
 
-```bash
-mvn spring-boot:run
-```
+### 3) Open API docs
 
-The app listens on the default Spring Boot port (**8080**) unless you override `server.port`.
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
 ## Docker
 
-Build the image from the project root:
+Build image:
 
 ```bash
 docker build -t seedcraft-backend .
 ```
 
-Run the container and publish the API on port 8080 using your `.env` file:
-
-```bash
-docker run --rm -p 8080:8080 --env-file .env seedcraft-backend
-```
-
-Or pass standard Spring variables directly (useful on managed deploy platforms):
+Run container:
 
 ```bash
 docker run --rm -p 8080:8080 \
@@ -66,36 +61,84 @@ docker run --rm -p 8080:8080 \
   seedcraft-backend
 ```
 
-## API
+## API Base Path
 
-Official base path for controllers is **`/api/v1`**.
+Primary REST APIs are served under:
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/health` | Liveness check (`{"status":"ok","service":"seedcraft-api","version":"v1"}`) |
-| GET/POST | `/api/v1/products` | List or create a product |
-| POST | `/api/v1/products/batch` | Create many products |
-| GET | `/api/v1/products/{id}` | Product by id |
-| GET | `/api/v1/products/{id}/with-category` | Product with category |
-| GET/POST | `/api/v1/categories` | List or create a category |
-| POST | `/api/v1/categories/batch` | Create many categories |
-| GET | `/api/v1/categories/{id}` | Category by id |
-| GET | `/api/v1/categories/{id}/with-products` | Category with products |
-| GET | `/api/v1/categories/{id}/tree` | Category subtree |
-| GET | `/api/v1/categories/tree` | Full category tree (roots with nested children) |
+- `/api/v1`
 
-## OpenAPI / Swagger UI
+## Health Endpoints
 
-After the app is running:
+- `GET /api/v1/health`
+- `GET /api/health` (legacy alias)
 
-- **Swagger UI:** http://localhost:8080/swagger-ui/index.html
-- **OpenAPI JSON:** http://localhost:8080/v3/api-docs
+## Products API
+
+Base: `/api/v1/products`
+
+- `POST /` create product
+- `POST /batch` create products in batch
+- `PUT /{id}` update product
+- `DELETE /{id}` delete product
+- `GET /` list products (supports filters and pagination)
+- `GET /{id}` get by id
+- `GET /{id}/with-category` get product with category info
+
+Supported list filters:
+
+- `q`, `categoryId`, `categoryCode`, `minPrice`, `maxPrice`, `currency`
+
+## Categories API
+
+Base: `/api/v1/categories`
+
+- `POST /` create category
+- `POST /batch` create categories in batch
+- `PUT /{id}` update category
+- `DELETE /{id}` delete category
+- `GET /` list categories (supports filters and pagination)
+- `GET /{id}` get by id
+- `GET /{id}/with-products` get category with products
+- `GET /{id}/tree` get subtree from node
+- `GET /tree` get full category tree
+
+Supported list filters:
+
+- `q`, `parentId`, `parentCode`
+
+## Inventory Dashboard API
+
+Base: `/api/v1/inventory/dashboard`
+
+These endpoints are designed for frontend dashboards and return chart/table-ready JSON.
+
+- `GET /` full dashboard bundle
+- `GET /kpis`
+- `GET /category-donut`
+- `GET /warehouse-fill-line`
+- `GET /stock-composition`
+- `GET /top-bins`
+- `GET /bin-heatmap`
+- `GET /low-stock`
+- `GET /inventory-value-line`
+
+Common query params:
+
+- `range`: `7d` | `30d` | `90d` (where supported)
+- `warehouseCode`
+- `categoryCode`
+- `limit` (for ranked/table endpoints)
 
 ## Security
 
-Spring Security is enabled with **CSRF disabled**. Requests under `/api/**`, `/v3/api-docs/**`, and `/swagger-ui/**` are **permitted without authentication**. Other routes require HTTP Basic credentials (configure users if you rely on those routes).
+Spring Security is enabled with CSRF disabled.
 
-## Tests
+- Permitted without auth: `/api/**`, `/v3/api-docs/**`, `/swagger-ui/**`
+- Other routes use HTTP Basic auth if configured.
+
+## Testing
+
+Run tests with:
 
 ```bash
 ./mvnw test
